@@ -135,7 +135,6 @@
                         <th class="py-2.5 px-3 border-r border-slate-300 text-center w-10">No</th>
                         <th class="py-2.5 px-3 border-r border-slate-300 text-center w-28">Tanggal Bayar</th>
                         <th class="py-2.5 px-3 border-r border-slate-300">No. Invoice</th>
-                        <th class="py-2.5 px-3 border-r border-slate-300">Jenis Pembayaran</th>
                         <th class="py-2.5 px-3 border-r border-slate-300">Keterangan</th>
                         <th class="py-2.5 px-3 border-r border-slate-300">Petugas Bendahara</th>
                         <th class="py-2.5 px-3 text-right">Nominal (Rp)</th>
@@ -151,11 +150,8 @@
                             <td class="py-2 px-3 border-r border-slate-200 font-mono font-bold text-blue-700">
                                 {{ $p->invoice_number }}
                             </td>
-                            <td class="py-2 px-3 border-r border-slate-200 font-bold text-slate-900">
-                                {{ $p->payment_type }}
-                            </td>
                             <td class="py-2 px-3 border-r border-slate-200 text-slate-600 text-[11px] italic">
-                                {{ $p->notes ?: '-' }}
+                                {{ $p->notes ?: 'Pembayaran Tunai SPMB' }}
                             </td>
                             <td class="py-2 px-3 border-r border-slate-200 text-slate-700 text-[11px]">
                                 {{ $p->confirmedBy->name ?? 'Bendahara SPMB' }}
@@ -166,13 +162,13 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="py-6 text-center text-slate-400">Belum ada riwayat transaksi pembayaran.</td>
+                            <td colspan="6" class="py-6 text-center text-slate-400">Belum ada riwayat transaksi pembayaran.</td>
                         </tr>
                     @endforelse
                 </tbody>
                 <tfoot>
                     <tr class="bg-emerald-50 border-t-2 border-slate-300 font-bold text-xs">
-                        <td colspan="6" class="py-3 px-4 text-right uppercase text-slate-800 tracking-wider">
+                        <td colspan="5" class="py-3 px-4 text-right uppercase text-slate-800 tracking-wider">
                             TOTAL AKUMULASI PEMBAYARAN (GLOBAL) :
                         </td>
                         <td class="py-3 px-3 text-right font-mono font-black text-base text-emerald-800">

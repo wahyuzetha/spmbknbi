@@ -2197,6 +2197,14 @@
                                                         <i class="fa-solid fa-print"></i>
                                                     </a>
 
+                                                    <!-- TOMBOL HAPUS DATA SISWA -->
+                                                    <button type="button" 
+                                                            onclick="confirmDeleteStudent('{{ $item->registration_id }}', '{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number ?? '' }}')"
+                                                            class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Hapus Data Calon Siswa Ini">
+                                                        <i class="fa-solid fa-trash-can"></i>
+                                                    </button>
+
                                                 </div>
                                             </td>
 
@@ -2293,30 +2301,11 @@
                             </div>
                         </div>
 
-                        <!-- GRID 2 KOLOM: TANGGAL & BESARAN NOMINAL -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                            
-                            <!-- TANGGAL PEMBAYARAN -->
-                            <div class="space-y-1">
-                                <label class="font-bold text-slate-800">Tanggal Pembayaran *</label>
-                                <input type="date" name="payment_date" id="payment-input-date" required value="{{ date('Y-m-d') }}" 
-                                       class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
-                            </div>
-
-                            <!-- JENIS / KATEGORI PEMBAYARAN -->
-                            <div class="space-y-1">
-                                <label class="font-bold text-slate-800">Kategori / Jenis Biaya *</label>
-                                <select name="payment_type" id="payment-input-type" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
-                                    <option value="Biaya Formulir Pendaftaran" selected>Biaya Formulir Pendaftaran</option>
-                                    <option value="Daftar Ulang (Tahap 1)">Daftar Ulang (Tahap 1)</option>
-                                    <option value="Daftar Ulang (Tahap 2)">Daftar Ulang (Tahap 2)</option>
-                                    <option value="Biaya Seragam & Atribut">Biaya Seragam & Atribut</option>
-                                    <option value="Biaya Praktik & Asuransi">Biaya Praktik & Asuransi</option>
-                                    <option value="Infaq / Uang Gedung">Infaq / Uang Gedung</option>
-                                    <option value="Pembayaran Biaya Lainnya">Pembayaran Biaya Lainnya</option>
-                                </select>
-                            </div>
-
+                        <!-- TANGGAL PEMBAYARAN -->
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Tanggal Pembayaran *</label>
+                            <input type="date" name="payment_date" id="payment-input-date" required value="{{ date('Y-m-d') }}" 
+                                   class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
                         </div>
 
                         <!-- INPUT BESARAN NOMINAL DENGAN QUICK BUTTONS -->
@@ -2411,7 +2400,7 @@
                                     <th class="py-2.5 px-3 text-center w-8">#</th>
                                     <th class="py-2.5 px-3">Tanggal</th>
                                     <th class="py-2.5 px-3">No. Invoice</th>
-                                    <th class="py-2.5 px-3">Kategori</th>
+                                    <th class="py-2.5 px-3">Keterangan</th>
                                     <th class="py-2.5 px-3 text-right">Nominal</th>
                                     <th class="py-2.5 px-3">Bendahara</th>
                                     <th class="py-2.5 px-3 text-center w-24">Kwitansi</th>
@@ -2439,6 +2428,11 @@
         </main>
 
     </div>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN (BERLAKU DI SELURUH MENU) -->
+    <form id="form-delete-single-student" action="" method="POST" class="hidden">
+        @csrf
+    </form>
 
     <!-- ================= MODAL TAMBAH / EDIT DATA JURUSAN ================= -->
     <div id="modal-major" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
@@ -3239,7 +3233,7 @@
                             <td class="py-3 px-3 text-center text-slate-500 font-semibold">${index + 1}</td>
                             <td class="py-3 px-3 font-mono text-slate-700 font-semibold">${item.payment_date}</td>
                             <td class="py-3 px-3 font-mono font-bold text-blue-700">${item.invoice_number}</td>
-                            <td class="py-3 px-3 font-bold text-slate-900">${item.payment_type}</td>
+                            <td class="py-3 px-3 text-slate-700 italic">${item.notes || '-'}</td>
                             <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700">${item.amount_formatted}</td>
                             <td class="py-3 px-3 text-slate-600">${item.confirmed_by}</td>
                             <td class="py-3 px-3 text-center">

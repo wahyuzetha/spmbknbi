@@ -394,13 +394,12 @@ class CalonSiswaFeatureTest extends TestCase
             'status' => 'pending',
         ]);
 
-        // 2. Bendahara menginput pembayaran pertama (Biaya Formulir Pendaftaran Rp 150.000)
+        // 2. Bendahara menginput pembayaran pertama (Tanpa kategori/jenis biaya)
         $pay1Response = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
             'registration_id' => $registration->id,
             'amount' => 150000,
             'payment_date' => '2026-10-18',
-            'payment_type' => 'Biaya Formulir Pendaftaran',
-            'notes' => 'Pembayaran tunai di loket bendahara SPMB',
+            'notes' => 'Pembayaran formulir tunai di loket bendahara SPMB',
         ]);
         $pay1Response->assertRedirect(route('admin.dashboard', ['view' => 'administrasi']));
         $pay1Response->assertSessionHas('success');
@@ -414,12 +413,11 @@ class CalonSiswaFeatureTest extends TestCase
             'confirmed_by' => $admin->id,
         ]);
 
-        // 3. Bendahara menginput pembayaran kedua (Cicilan 1 / Daftar Ulang Rp 350.000)
+        // 3. Bendahara menginput pembayaran kedua (Cicilan 1 Rp 350.000)
         $pay2Response = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
             'registration_id' => $registration->id,
             'amount' => 350000,
             'payment_date' => '2026-10-19',
-            'payment_type' => 'Daftar Ulang (Tahap 1)',
             'notes' => 'Cicilan daftar ulang pertama',
         ]);
         $pay2Response->assertSessionHas('success');
@@ -429,7 +427,6 @@ class CalonSiswaFeatureTest extends TestCase
             'registration_id' => $registration->id,
             'amount' => 500000,
             'payment_date' => '2026-10-20',
-            'payment_type' => 'Biaya Seragam & Atribut',
             'notes' => 'Pelunasan seragam sekolah',
         ]);
         $pay3Response->assertSessionHas('success');
@@ -455,9 +452,9 @@ class CalonSiswaFeatureTest extends TestCase
         $muridView->assertSee('Rp 1.000.000');
         $muridView->assertSee('3x');
         $muridView->assertSee('Terverifikasi Bendahara');
-        $muridView->assertSee('Biaya Formulir Pendaftaran');
-        $muridView->assertSee('Daftar Ulang (Tahap 1)');
-        $muridView->assertSee('Biaya Seragam & Atribut');
+        $muridView->assertSee('Pembayaran formulir tunai di loket bendahara SPMB');
+        $muridView->assertSee('Cicilan daftar ulang pertama');
+        $muridView->assertSee('Pelunasan seragam sekolah');
 
         // 7. Verifikasi Cetak Kwitansi Satuan & Kwitansi Global
         $payment1 = Payment::where('registration_id', $registration->id)->first();
@@ -481,6 +478,15 @@ class CalonSiswaFeatureTest extends TestCase
         $muridGlobalReceiptResponse = $this->actingAs($siswa)->get(route('murid.payment.globalReceipt'));
         $muridGlobalReceiptResponse->assertStatus(200);
         $muridGlobalReceiptResponse->assertSee('Rp 1.000.000');
+
+        // 8. Test Aksi Hapus Data Siswa dari Bagian Action Administrasi
+        $deleteResponse = $this->actingAs($admin)->post(route('admin.spmb.student.delete', $registration->id));
+        $deleteResponse->assertSessionHas('success');
+
+        // Pastikan data pendaftaran, siswa, dan seluruh histori pembayarannya bersih terhapus
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $registration->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswa->id]);
+        $this->assertDatabaseMissing('pembayaran', ['registration_id' => $registration->id]);
     }
 }
 

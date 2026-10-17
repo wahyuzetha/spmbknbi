@@ -911,7 +911,7 @@ class DashboardController extends Controller
      */
     public function deleteStudentManual($id)
     {
-        $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents'])->findOrFail($id);
+        $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents', 'payments'])->findOrFail($id);
         $name = $registration->user?->name ?? $registration->registration_number;
 
         $user = $registration->user;
@@ -919,6 +919,7 @@ class DashboardController extends Controller
         $registration->school?->delete();
         $registration->parent?->delete();
         $registration->documents()->delete();
+        $registration->payments()->delete();
         $registration->delete();
 
         if ($user) {
@@ -940,13 +941,14 @@ class DashboardController extends Controller
 
         $count = 0;
         foreach ($ids as $id) {
-            $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents'])->find($id);
+            $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents', 'payments'])->find($id);
             if ($registration) {
                 $user = $registration->user;
                 $registration->biodata?->delete();
                 $registration->school?->delete();
                 $registration->parent?->delete();
                 $registration->documents()->delete();
+                $registration->payments()->delete();
                 $registration->delete();
                 $user?->delete();
                 $count++;
@@ -972,7 +974,7 @@ class DashboardController extends Controller
             'registration_id' => 'required|exists:pendaftaran,id',
             'amount' => 'required|numeric|min:1000',
             'payment_date' => 'required|date',
-            'payment_type' => 'required|string|max:150',
+            'payment_type' => 'nullable|string|max:150',
             'notes' => 'nullable|string|max:255',
         ]);
 
@@ -981,7 +983,7 @@ class DashboardController extends Controller
         $payment = Payment::create([
             'registration_id' => $registration->id,
             'invoice_number' => Payment::generateInvoiceNumber(),
-            'payment_type' => $validated['payment_type'],
+            'payment_type' => $validated['payment_type'] ?? 'Pembayaran SPMB',
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
             'payment_method' => 'tunai',

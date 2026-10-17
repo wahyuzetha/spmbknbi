@@ -126,12 +126,6 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 py-1.5 border-b border-slate-100">
-                <div class="sm:col-span-3 font-bold text-slate-600 uppercase">Jenis Pembayaran</div>
-                <div class="sm:col-span-9 font-bold text-slate-900">
-                    {{ $payment->payment_type }}
-                </div>
-            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 py-1.5 border-b border-slate-100">
                 <div class="sm:col-span-3 font-bold text-slate-600 uppercase">Keterangan / Catatan</div>

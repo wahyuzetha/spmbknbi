@@ -268,7 +268,7 @@
                                     <th class="py-2.5 px-3 text-center w-8">#</th>
                                     <th class="py-2.5 px-3">Tanggal Bayar</th>
                                     <th class="py-2.5 px-3">No. Invoice</th>
-                                    <th class="py-2.5 px-3">Jenis Pembayaran</th>
+                                    <th class="py-2.5 px-3">Keterangan</th>
                                     <th class="py-2.5 px-3 text-right">Nominal</th>
                                     <th class="py-2.5 px-3">Petugas Bendahara</th>
                                     <th class="py-2.5 px-3 text-center w-28">Status</th>
@@ -283,11 +283,8 @@
                                             {{ \Carbon\Carbon::parse($p->payment_date ?? $p->created_at)->translatedFormat('d M Y') }}
                                         </td>
                                         <td class="py-3 px-3 font-mono font-bold text-blue-700">{{ $p->invoice_number }}</td>
-                                        <td class="py-3 px-3 font-bold text-slate-900">
-                                            {{ $p->payment_type }}
-                                            @if($p->notes)
-                                                <span class="block text-[10px] text-slate-500 font-normal italic">"{{ $p->notes }}"</span>
-                                            @endif
+                                        <td class="py-3 px-3 text-slate-900 font-medium italic">
+                                            {{ $p->notes ?: 'Pembayaran Tunai SPMB' }}
                                         </td>
                                         <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700 text-sm">
                                             Rp {{ number_format($p->amount, 0, ',', '.') }}
