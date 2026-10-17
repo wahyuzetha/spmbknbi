@@ -10,6 +10,8 @@ class Major extends Model
 {
     use HasFactory;
 
+    protected $table = 'jurusan';
+
     protected $fillable = [
         'code',
         'name',

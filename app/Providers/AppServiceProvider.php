@@ -19,24 +19,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Support\Facades\Auth::provider('multi_table', function ($app, array $config) {
+            return new \App\Auth\MultiTableUserProvider();
+        });
+
         // Super Admin Full Access
-        \Illuminate\Support\Facades\Gate::before(function (\App\Models\User $user, string $ability) {
-            if ($user->isAdmin()) {
+        \Illuminate\Support\Facades\Gate::before(function ($user, string $ability) {
+            if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
                 return true;
             }
         });
 
         // Role Gates
-        \Illuminate\Support\Facades\Gate::define('admin-access', function (\App\Models\User $user) {
-            return $user->isAdmin();
+        \Illuminate\Support\Facades\Gate::define('admin-access', function ($user) {
+            return method_exists($user, 'isAdmin') && $user->isAdmin();
         });
 
-        \Illuminate\Support\Facades\Gate::define('panitia-access', function (\App\Models\User $user) {
-            return $user->hasRole(['admin', 'panitia']);
+        \Illuminate\Support\Facades\Gate::define('panitia-access', function ($user) {
+            return method_exists($user, 'hasRole') && $user->hasRole(['admin', 'panitia']);
         });
 
-        \Illuminate\Support\Facades\Gate::define('murid-access', function (\App\Models\User $user) {
-            return $user->isMurid();
+        \Illuminate\Support\Facades\Gate::define('murid-access', function ($user) {
+            return method_exists($user, 'isMurid') && $user->isMurid();
         });
 
         // Feature Specific Gates
@@ -54,6 +58,20 @@ class AppServiceProvider extends ServiceProvider
 
         \Illuminate\Support\Facades\Gate::define('view-reports', function (\App\Models\User $user) {
             return $user->hasRole(['admin', 'panitia']);
+        });
+
+        // Global View Composer untuk Logo Sekolah & Pengaturan Sistem ke Seluruh Views
+        \Illuminate\Support\Facades\View::composer('*', function ($view) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('pengaturan_sistem')) {
+                    $globalSettings = \App\Models\SystemSetting::pluck('value', 'key')->toArray();
+                    $view->with('globalSettings', $globalSettings);
+                    $view->with('schoolLogo', $globalSettings['school_logo'] ?? null);
+                    $view->with('copImageBanner', $globalSettings['cop_image_banner'] ?? null);
+                }
+            } catch (\Throwable $e) {
+                // Abaikan saat awal migrasi
+            }
         });
     }
 }

@@ -10,6 +10,8 @@ class StudentSchool extends Model
 {
     use HasFactory;
 
+    protected $table = 'asal_sekolah_siswa';
+
     protected $fillable = [
         'registration_id',
         'asal_sekolah',

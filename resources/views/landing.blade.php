@@ -84,6 +84,10 @@
                 <a href="https://wa.me/6285290944090" target="_blank" class="hover:text-amber-300 transition flex items-center gap-1">
                     <i class="fa-brands fa-whatsapp text-emerald-300"></i> Hotline: 0852-9094-4090
                 </a>
+                <span class="text-white/40">|</span>
+                <button type="button" onclick="openStaffModal()" class="hover:text-amber-300 transition flex items-center gap-1 text-amber-300 font-bold">
+                    <i class="fa-solid fa-user-shield"></i> Login Petugas (Admin / Panitia)
+                </button>
             </div>
         </div>
     </div>
@@ -95,10 +99,14 @@
                 
                 <!-- BRANDING LOGO & NAMA SEKOLAH -->
                 <a href="{{ route('home') }}" class="flex items-center gap-3.5 group">
-                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-0.5 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform flex items-center justify-center">
-                        <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center text-blue-600 font-extrabold text-xl">
-                            <i class="fa-solid fa-graduation-cap"></i>
-                        </div>
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 p-0.5 shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden">
+                        @if(!empty($schoolLogo))
+                            <img src="{{ asset($schoolLogo) }}" alt="Logo Sekolah" class="w-full h-full object-contain p-1 rounded-[10px] bg-white">
+                        @else
+                            <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center text-blue-600 font-extrabold text-xl">
+                                <i class="fa-solid fa-graduation-cap"></i>
+                            </div>
+                        @endif
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
@@ -135,11 +143,45 @@
                 </nav>
 
                 <!-- ACTION BUTTONS -->
-                <div class="hidden sm:flex items-center gap-3">
-                    <a href="#login-box" class="px-4 py-2.5 text-sm font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-xl transition border border-slate-200/70 flex items-center gap-2">
+                <div class="hidden sm:flex items-center gap-2.5">
+                    
+                    <!-- DROPDOWN LOGIN PETUGAS (ADMIN & PANITIA) -->
+                    <div class="relative group">
+                        <button type="button" class="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-indigo-600 bg-slate-100 hover:bg-indigo-50 rounded-xl transition border border-slate-200/80 flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+                            <span>Login Petugas</span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 group-hover:rotate-180 transition-transform"></i>
+                        </button>
+                        <div class="absolute right-0 top-full mt-1.5 w-52 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 hidden group-hover:block z-50 animate-in fade-in zoom-in duration-150">
+                            <div class="px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                                Akses Internal Sekolah
+                            </div>
+                            <a href="javascript:void(0)" onclick="openStaffModal('admin')" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition">
+                                <span class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">
+                                    <i class="fa-solid fa-user-shield"></i>
+                                </span>
+                                <div>
+                                    <div>Administrator</div>
+                                    <div class="text-[10px] text-slate-400 font-normal">Super Admin SPMB</div>
+                                </div>
+                            </a>
+                            <a href="javascript:void(0)" onclick="openStaffModal('panitia')" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 transition">
+                                <span class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px]">
+                                    <i class="fa-solid fa-clipboard-check"></i>
+                                </span>
+                                <div>
+                                    <div>Panitia SPMB</div>
+                                    <div class="text-[10px] text-slate-400 font-normal">Verifikator Berkas</div>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+
+                    <a href="#login-box" class="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-blue-50 rounded-xl transition border border-slate-200/80 flex items-center gap-1.5">
                         <i class="fa-solid fa-right-to-bracket text-blue-600"></i> Masuk Akun
                     </a>
-                    <a href="#daftar-section" class="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-600/25 hover:shadow-lg hover:shadow-blue-600/35 transition transform hover:-translate-y-0.5 flex items-center gap-2">
+                    
+                    <a href="{{ route('daftar') }}" class="px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-xl shadow-md shadow-blue-600/25 hover:shadow-lg transition transform hover:-translate-y-0.5 flex items-center gap-1.5">
                         <i class="fa-solid fa-user-plus"></i> Daftar Sekarang
                     </a>
                 </div>
@@ -158,8 +200,16 @@
                 <a href="#syarat" class="px-3 py-2 text-sm font-semibold text-slate-700 rounded-lg hover:bg-slate-50">Syarat Berkas</a>
                 <a href="#kontak" class="px-3 py-2 text-sm font-semibold text-slate-700 rounded-lg hover:bg-slate-50">Kontak Panitia</a>
                 <div class="pt-2 flex flex-col gap-2">
-                    <a href="#login-box" class="w-full text-center py-2.5 text-sm font-bold text-slate-700 bg-slate-100 rounded-xl">Masuk Akun</a>
-                    <a href="#daftar-section" class="w-full text-center py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl shadow">Daftar Sekarang</a>
+                    <a href="#login-box" class="w-full text-center py-2.5 text-xs font-bold text-slate-700 bg-slate-100 rounded-xl">Masuk Siswa</a>
+                    <a href="{{ route('daftar') }}" class="w-full text-center py-2.5 text-xs font-bold text-white bg-blue-600 rounded-xl shadow">Daftar Sekarang</a>
+                    <div class="pt-2 border-t border-slate-100 flex flex-col gap-1.5">
+                        <button type="button" onclick="openStaffModal('admin')" class="w-full text-left px-3 py-2 text-xs font-bold text-blue-800 bg-blue-50 rounded-xl flex items-center gap-2">
+                            <i class="fa-solid fa-user-shield text-blue-600"></i> Login Administrator SPMB
+                        </button>
+                        <button type="button" onclick="openStaffModal('panitia')" class="w-full text-left px-3 py-2 text-xs font-bold text-indigo-800 bg-indigo-50 rounded-xl flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-check text-indigo-600"></i> Login Panitia SPMB
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -188,7 +238,7 @@
 
                     <!-- CTA BUTTONS -->
                     <div class="flex flex-wrap items-center gap-4 pt-2">
-                        <a href="#daftar-section" class="px-7 py-3.5 text-base font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:shadow-blue-600/40 transition transform hover:-translate-y-1 flex items-center gap-3">
+                        <a href="{{ route('daftar') }}" class="px-7 py-3.5 text-base font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-2xl shadow-xl shadow-blue-600/30 hover:shadow-2xl hover:shadow-blue-600/40 transition transform hover:-translate-y-1 flex items-center gap-3">
                             <i class="fa-solid fa-file-pen text-lg"></i> Isi Formulir Pendaftaran
                         </a>
                         <a href="#alur" class="px-6 py-3.5 text-base font-bold text-slate-700 hover:text-blue-600 bg-white hover:bg-slate-50 border border-slate-200/90 rounded-2xl shadow-sm hover:shadow transition flex items-center gap-2.5">
@@ -220,56 +270,80 @@
                         
                         <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
+                        <!-- ROLE SWITCHER TABS PADA PORTAL HERO -->
+                        <div class="flex items-center justify-center p-1 bg-slate-100/90 rounded-2xl mb-5 text-[11px] font-bold">
+                            <button type="button" onclick="switchLoginRole('murid')" id="tab-murid" class="flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition">
+                                Calon Siswa
+                            </button>
+                            <button type="button" onclick="switchLoginRole('panitia')" id="tab-panitia" class="flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition">
+                                Panitia SPMB
+                            </button>
+                            <button type="button" onclick="switchLoginRole('admin')" id="tab-admin" class="flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition">
+                                Administrator
+                            </button>
+                        </div>
+
                         <!-- KEPALA CARD -->
-                        <div class="text-center mb-6">
-                            <div class="inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-3 shadow-inner">
-                                <i class="fa-solid fa-id-card-clip"></i>
+                        <div class="text-center mb-5">
+                            <div id="role-icon-box" class="inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-2.5 shadow-inner">
+                                <i class="fa-solid fa-id-card-clip" id="role-icon"></i>
                             </div>
-                            <h3 class="text-xl font-extrabold text-slate-900">Portal Calon Siswa</h3>
-                            <p class="text-xs text-slate-500 mt-1 font-medium">
+                            <h3 class="text-xl font-extrabold text-slate-900" id="role-title">Portal Calon Siswa</h3>
+                            <p class="text-xs text-slate-500 mt-0.5 font-medium" id="role-subtitle">
                                 Masuk menggunakan No. HP atau NISN pendaftaran Anda
                             </p>
                         </div>
 
                         <!-- FORM LOGIN INTERAKTIF -->
-                        <form action="#" method="POST" class="space-y-4">
+                        <form action="{{ route('login.post') }}" method="POST" class="space-y-3.5">
                             @csrf
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1" id="label-identity">
                                     No. WhatsApp / NISN *
                                 </label>
                                 <div class="relative">
-                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400" id="icon-identity">
                                         <i class="fa-solid fa-phone"></i>
                                     </span>
-                                    <input type="text" name="login_identity" placeholder="Contoh: 085861512412" required
-                                           class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
+                                    <input type="text" name="login_identity" id="input-identity" placeholder="Contoh: 085861512412" required
+                                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
                                     Kata Sandi (Password) *
                                 </label>
                                 <div class="relative">
                                     <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
                                         <i class="fa-solid fa-lock"></i>
                                     </span>
-                                    <input type="password" name="password" placeholder="Masukkan kata sandi" required
-                                           class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
+                                    <input type="password" name="password" id="input-password" placeholder="Masukkan kata sandi" required
+                                           class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
                                 </div>
                             </div>
 
-                            <button type="submit" class="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 hover:shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                            <!-- QUICK DEMO FILL BUTTONS -->
+                            <div id="demo-badge-container" class="hidden p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-[11px] text-slate-600">
+                                <span class="font-bold block text-slate-700 mb-1">Akun Percobaan (Demo):</span>
+                                <div class="flex items-center justify-between">
+                                    <code id="demo-acc-text" class="text-blue-600 font-mono font-bold text-[10px]"></code>
+                                    <button type="button" onclick="fillDemoCredentials()" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] hover:bg-blue-700">
+                                        Isi Otomatis
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button type="submit" id="btn-login-submit" class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-blue-600/25 hover:shadow-lg transition flex items-center justify-center gap-2 text-xs sm:text-sm">
                                 <span>Masuk Aplikasi</span> <i class="fa-solid fa-arrow-right"></i>
                             </button>
                         </form>
 
-                        <div class="mt-6 pt-5 border-t border-slate-200/70 text-center">
+                        <div class="mt-5 pt-4 border-t border-slate-200/70 text-center">
                             <p class="text-xs text-slate-500 font-medium">
                                 Belum mendaftar sebagai calon siswa baru?
                             </p>
-                            <a href="#daftar-section" class="inline-block mt-2 text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
+                            <a href="{{ route('daftar') }}" class="inline-block mt-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline">
                                 Buat Akun Pendaftaran Baru &rarr;
                             </a>
                         </div>
@@ -489,8 +563,14 @@
                             </div>
                         </div>
 
+                        @php
+                            $helpdeskWa = preg_replace('/[^0-9]/', '', $globalSettings['hotline_panitia'] ?? '085290944090');
+                            if(str_starts_with($helpdeskWa, '0')) {
+                                $helpdeskWa = '62' . substr($helpdeskWa, 1);
+                            }
+                        @endphp
                         <div class="mt-5">
-                            <a href="https://wa.me/6285290944090" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm">
+                            <a href="https://wa.me/{{ $helpdeskWa }}?text=Halo%20Helpdesk%20Panitia%20SPMB%20SMK%20Karya%20Nugraha%20Boyolali" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm">
                                 <i class="fa-brands fa-whatsapp text-lg"></i> Hubungi WhatsApp Helpdesk Panitia
                             </a>
                         </div>
@@ -508,17 +588,28 @@
                 
                 <!-- KOLOM 1: IDENTITAS -->
                 <div>
-                    <div class="flex items-center gap-2 text-white font-extrabold text-lg mb-3">
-                        <i class="fa-solid fa-school text-blue-400"></i> SMK KARYA NUGRAHA BOYOLALI
+                    <div class="flex items-center gap-2.5 text-white font-extrabold text-lg mb-3">
+                        @if(!empty($schoolLogo))
+                            <img src="{{ asset($schoolLogo) }}" alt="Logo" class="w-7 h-7 object-contain rounded bg-white/10 p-0.5">
+                        @else
+                            <i class="fa-solid fa-school text-blue-400"></i>
+                        @endif
+                        <span>{{ $globalSettings['school_name'] ?? 'SMK KARYA NUGRAHA BOYOLALI' }}</span>
                     </div>
                     <p class="text-xs text-slate-400 leading-relaxed font-normal">
                         Sekolah Menengah Kejuruan Pusat Keunggulan (SMK PK) dengan kurikulum industri, fasilitas modern, dan lulusan yang siap bersaing di tingkat nasional maupun internasional.
                     </p>
+                    @php
+                        $footerWa = preg_replace('/[^0-9]/', '', $globalSettings['hotline_panitia'] ?? '085290944090');
+                        if(str_starts_with($footerWa, '0')) {
+                            $footerWa = '62' . substr($footerWa, 1);
+                        }
+                    @endphp
                     <div class="mt-4 flex items-center gap-3">
                         <a href="#" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-blue-600 text-white flex items-center justify-center transition text-xs"><i class="fa-brands fa-facebook-f"></i></a>
                         <a href="#" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-pink-600 text-white flex items-center justify-center transition text-xs"><i class="fa-brands fa-instagram"></i></a>
                         <a href="#" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-red-600 text-white flex items-center justify-center transition text-xs"><i class="fa-brands fa-youtube"></i></a>
-                        <a href="https://wa.me/6285290944090" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-emerald-600 text-white flex items-center justify-center transition text-xs"><i class="fa-brands fa-whatsapp"></i></a>
+                        <a href="https://wa.me/{{ $footerWa }}" target="_blank" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-emerald-600 text-white flex items-center justify-center transition text-xs"><i class="fa-brands fa-whatsapp"></i></a>
                     </div>
                 </div>
 
@@ -561,6 +652,176 @@
             </div>
         </div>
     </footer>
+
+    <!-- ================= MODAL LOGIN KHUSUS PETUGAS (ADMIN & PANITIA) ================= -->
+    <div id="modal-staff" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden animate-in fade-in duration-200">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-6 sm:p-7 border border-slate-100 relative">
+            
+            <button type="button" onclick="closeStaffModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- LOGO & JUDUL -->
+            <div class="text-center mb-5">
+                <div class="w-14 h-14 mx-auto mb-2 flex items-center justify-center overflow-hidden">
+                    @if(!empty($schoolLogo))
+                        <img src="{{ asset($schoolLogo) }}" alt="Logo Sekolah" class="max-w-full max-h-full object-contain">
+                    @else
+                        <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow">
+                            <polygon points="50,5 95,38 78,92 22,92 5,38" fill="#1e40af" stroke="#ffffff" stroke-width="2"/>
+                            <polygon points="50,10 90,40 75,87 25,87 10,40" fill="#2563eb"/>
+                            <circle cx="50" cy="50" r="28" fill="#ffffff"/>
+                            <circle cx="50" cy="50" r="22" fill="#1d4ed8"/>
+                            <path d="M50,34 L54,48 L46,48 Z" fill="#facc15"/>
+                            <rect x="48" y="48" width="4" height="16" fill="#ffffff"/>
+                            <rect x="18" y="72" width="64" height="12" rx="3" fill="#1e3a8a"/>
+                            <text x="50" y="81" font-size="6" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">SMK KARYA NUGRAHA</text>
+                        </svg>
+                    @endif
+                </div>
+                <h3 class="text-base font-extrabold text-slate-900" id="staff-modal-title">Portal Petugas SPMB</h3>
+                <p class="text-xs text-slate-500" id="staff-modal-sub">Login Khusus Administrator & Panitia</p>
+            </div>
+
+            <!-- TABS PILIHAN ROLE PETUGAS -->
+            <div class="flex items-center p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
+                <button type="button" onclick="setModalRole('admin')" id="modal-tab-admin" class="flex-1 py-1.5 rounded-lg bg-blue-600 text-white shadow transition">
+                    Administrator
+                </button>
+                <button type="button" onclick="setModalRole('panitia')" id="modal-tab-panitia" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    Panitia SPMB
+                </button>
+            </div>
+
+            <!-- FORM LOGIN PETUGAS -->
+            <form action="{{ route('login.post') }}" method="POST" class="space-y-3.5">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email / Username Petugas</label>
+                    <input type="text" name="login_identity" id="modal-staff-identity" value="admin@smkknbi.sch.id" required
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Kata Sandi (Password)</label>
+                    <input type="password" name="password" id="modal-staff-pwd" value="password" required
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600">
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500">
+                    <span class="font-bold text-slate-700">Akun Demo Terdaftar:</span>
+                    <div class="text-[10px] mt-0.5" id="staff-demo-info">
+                        Email: <strong>admin@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition">
+                    Masuk ke Dashboard
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC UNTUK ROLE SWITCHER & MODAL -->
+    <script>
+        let currentRole = 'murid';
+
+        function switchLoginRole(role) {
+            currentRole = role;
+            const tabMurid = document.getElementById('tab-murid');
+            const tabPanitia = document.getElementById('tab-panitia');
+            const tabAdmin = document.getElementById('tab-admin');
+            const roleTitle = document.getElementById('role-title');
+            const roleSubtitle = document.getElementById('role-subtitle');
+            const roleIcon = document.getElementById('role-icon');
+            const roleIconBox = document.getElementById('role-icon-box');
+            const labelIdentity = document.getElementById('label-identity');
+            const inputIdentity = document.getElementById('input-identity');
+            const inputPassword = document.getElementById('input-password');
+            const demoContainer = document.getElementById('demo-badge-container');
+            const demoAccText = document.getElementById('demo-acc-text');
+
+            // Reset tab styles
+            [tabMurid, tabPanitia, tabAdmin].forEach(tab => {
+                tab.className = 'flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition';
+            });
+
+            if (role === 'admin') {
+                tabAdmin.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition';
+                roleTitle.innerText = 'Portal Administrator';
+                roleSubtitle.innerText = 'Kelola pendaftar, kuota jurusan, dan tim panitia';
+                roleIcon.className = 'fa-solid fa-user-shield';
+                roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-2.5 shadow-inner';
+                labelIdentity.innerText = 'Email Administrator *';
+                inputIdentity.placeholder = 'admin@smkknbi.sch.id';
+                demoContainer.classList.remove('hidden');
+                demoAccText.innerText = 'admin@smkknbi.sch.id / password';
+            } else if (role === 'panitia') {
+                tabPanitia.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-indigo-700 shadow-sm transition';
+                roleTitle.innerText = 'Portal Panitia SPMB';
+                roleSubtitle.innerText = 'Meja verifikasi dokumen & keabsahan berkas calon siswa';
+                roleIcon.className = 'fa-solid fa-clipboard-check';
+                roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-indigo-50 text-indigo-600 text-2xl mb-2.5 shadow-inner';
+                labelIdentity.innerText = 'Email Panitia *';
+                inputIdentity.placeholder = 'panitia@smkknbi.sch.id';
+                demoContainer.classList.remove('hidden');
+                demoAccText.innerText = 'panitia@smkknbi.sch.id / password';
+            } else {
+                tabMurid.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition';
+                roleTitle.innerText = 'Portal Calon Siswa';
+                roleSubtitle.innerText = 'Masuk menggunakan No. HP atau NISN pendaftaran Anda';
+                roleIcon.className = 'fa-solid fa-id-card-clip';
+                roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-2.5 shadow-inner';
+                labelIdentity.innerText = 'No. WhatsApp / NISN *';
+                inputIdentity.placeholder = 'Contoh: 085861512412';
+                demoContainer.classList.add('hidden');
+            }
+        }
+
+        function fillDemoCredentials() {
+            const inputIdentity = document.getElementById('input-identity');
+            const inputPassword = document.getElementById('input-password');
+            if (currentRole === 'admin') {
+                inputIdentity.value = 'admin@smkknbi.sch.id';
+                inputPassword.value = 'password';
+            } else if (currentRole === 'panitia') {
+                inputIdentity.value = 'panitia@smkknbi.sch.id';
+                inputPassword.value = 'password';
+            }
+        }
+
+        function openStaffModal(targetRole = 'admin') {
+            document.getElementById('modal-staff').classList.remove('hidden');
+            setModalRole(targetRole);
+        }
+
+        function closeStaffModal() {
+            document.getElementById('modal-staff').classList.add('hidden');
+        }
+
+        function setModalRole(role) {
+            const tabAdmin = document.getElementById('modal-tab-admin');
+            const tabPanitia = document.getElementById('modal-tab-panitia');
+            const identity = document.getElementById('modal-staff-identity');
+            const pwd = document.getElementById('modal-staff-pwd');
+            const info = document.getElementById('staff-demo-info');
+
+            if (role === 'panitia') {
+                tabPanitia.className = 'flex-1 py-1.5 rounded-lg bg-indigo-600 text-white shadow transition';
+                tabAdmin.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+                identity.value = 'panitia@smkknbi.sch.id';
+                pwd.value = 'password';
+                info.innerHTML = 'Email: <strong>panitia@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>';
+            } else {
+                tabAdmin.className = 'flex-1 py-1.5 rounded-lg bg-blue-600 text-white shadow transition';
+                tabPanitia.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
+                identity.value = 'admin@smkknbi.sch.id';
+                pwd.value = 'password';
+                info.innerHTML = 'Email: <strong>admin@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>';
+            }
+        }
+    </script>
 
 </body>
 </html>

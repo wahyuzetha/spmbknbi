@@ -9,6 +9,8 @@ class SystemSetting extends Model
 {
     use HasFactory;
 
+    protected $table = 'pengaturan_sistem';
+
     protected $fillable = [
         'key',
         'value',

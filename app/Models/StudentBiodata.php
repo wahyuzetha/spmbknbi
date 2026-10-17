@@ -10,6 +10,8 @@ class StudentBiodata extends Model
 {
     use HasFactory;
 
+    protected $table = 'biodata_siswa';
+
     protected $fillable = [
         'registration_id',
         'nik',

@@ -10,6 +10,8 @@ class StudentParent extends Model
 {
     use HasFactory;
 
+    protected $table = 'orang_tua_siswa';
+
     protected $fillable = [
         'registration_id',
         'nama_ayah',

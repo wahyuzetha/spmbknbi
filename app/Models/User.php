@@ -14,6 +14,8 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    protected $table = 'petugas';
+
     /**
      * The attributes that are mass assignable.
      *
@@ -21,14 +23,15 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'phone',
-        'nisn',
         'role',
         'is_active',
         'avatar',
         'password',
     ];
+
 
     /**
      * The attributes that should be hidden for serialization.

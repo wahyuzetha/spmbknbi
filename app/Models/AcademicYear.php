@@ -10,6 +10,8 @@ class AcademicYear extends Model
 {
     use HasFactory;
 
+    protected $table = 'tahun_ajaran';
+
     protected $fillable = [
         'name',
         'is_active',
