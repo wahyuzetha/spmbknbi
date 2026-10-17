@@ -30,6 +30,8 @@ Route::middleware(['auth', 'role:murid'])->prefix('murid')->name('murid.')->grou
     Route::get('/dashboard', [MuridDashboardController::class, 'index'])->name('dashboard');
     Route::post('/upload-document', [MuridDashboardController::class, 'uploadDocument'])->name('upload.document');
     Route::get('/cetak-kartu', [MuridDashboardController::class, 'printCard'])->name('print.card');
+    Route::get('/pembayaran/{id}/kwitansi', [MuridDashboardController::class, 'printPaymentReceipt'])->name('payment.receipt');
+    Route::get('/pembayaran/rekap', [MuridDashboardController::class, 'printGlobalReceipt'])->name('payment.globalReceipt');
 });
 
 // Shortcut redirect /dashboard based on role
@@ -79,6 +81,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/academic-years/store', [AdminDashboardController::class, 'storeAcademicYear'])->name('academicYears.store');
     Route::post('/academic-years/{id}/activate', [AdminDashboardController::class, 'activateAcademicYear'])->name('academicYears.activate');
     Route::post('/academic-years/{id}/delete', [AdminDashboardController::class, 'deleteAcademicYear'])->name('academicYears.delete');
+
+    // FITUR ADMINISTRASI & PEMBAYARAN TUNAI SPMB OLEH BENDAHARA
+    Route::post('/administrasi/pembayaran/store', [AdminDashboardController::class, 'storePayment'])->name('administrasi.payment.store');
+    Route::get('/administrasi/pembayaran/{id}/kwitansi', [AdminDashboardController::class, 'printPaymentReceipt'])->name('administrasi.payment.receipt');
+    Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
 });
 
 // 5. Portal Panitia SPMB (Protected by Auth & Role: panitia)

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Major;
+use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\Siswa;
 use App\Models\User;
@@ -355,6 +356,131 @@ class CalonSiswaFeatureTest extends TestCase
         $viewUpdated->assertStatus(200);
         $viewUpdated->assertSee('Teknik Otomotif Masa Depan');
         $viewUpdated->assertSee('Kelas Axioo Global');
+    }
+
+    /**
+     * Test Fitur Administrasi Pembayaran Tunai oleh Bendahara:
+     * - Input pembayaran tunai dengan mencari siswa / nomor pendaftar
+     * - Otomatis terverifikasi oleh petugas bendahara
+     * - Siswa melihat nominal pembayaran di akun portal calon siswa
+     * - Jika lebih dari 2 kali transaksi, otomatis di-global menjadi 1 baris akumulatif tanpa menghilangkan riwayat sebelumnya
+     * - Cetak Kwitansi Satuan & Rekapitulasi Global
+     */
+    public function test_administrasi_payment_input_verification_global_aggregation_and_student_view()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        // 1. Buat calon siswa baru yang sudah mendaftar dan mengisi form
+        $major = Major::first();
+        $siswa = Siswa::create([
+            'name' => 'AHMAD SYAHRIR',
+            'username' => '087811223344',
+            'phone' => '087811223344',
+            'nisn' => '0099887766',
+            'email' => 'ahmadsyahrir@siswa.smkknbi.sch.id',
+            'password' => bcrypt('password123'),
+            'raw_password' => 'password123',
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+
+        $academicYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $registration = Registration::create([
+            'registration_number' => '271099',
+            'user_id' => $siswa->id,
+            'academic_year_id' => $academicYear->id,
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ]);
+
+        // 2. Bendahara menginput pembayaran pertama (Biaya Formulir Pendaftaran Rp 150.000)
+        $pay1Response = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
+            'registration_id' => $registration->id,
+            'amount' => 150000,
+            'payment_date' => '2026-10-18',
+            'payment_type' => 'Biaya Formulir Pendaftaran',
+            'notes' => 'Pembayaran tunai di loket bendahara SPMB',
+        ]);
+        $pay1Response->assertRedirect(route('admin.dashboard', ['view' => 'administrasi']));
+        $pay1Response->assertSessionHas('success');
+
+        // Pastikan pembayaran 1 otomatis terverifikasi oleh bendahara
+        $this->assertDatabaseHas('pembayaran', [
+            'registration_id' => $registration->id,
+            'amount' => 150000.00,
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+        ]);
+
+        // 3. Bendahara menginput pembayaran kedua (Cicilan 1 / Daftar Ulang Rp 350.000)
+        $pay2Response = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
+            'registration_id' => $registration->id,
+            'amount' => 350000,
+            'payment_date' => '2026-10-19',
+            'payment_type' => 'Daftar Ulang (Tahap 1)',
+            'notes' => 'Cicilan daftar ulang pertama',
+        ]);
+        $pay2Response->assertSessionHas('success');
+
+        // 4. Bendahara menginput pembayaran ketiga (Lebih dari 2 kali transaksi! Rp 500.000)
+        $pay3Response = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
+            'registration_id' => $registration->id,
+            'amount' => 500000,
+            'payment_date' => '2026-10-20',
+            'payment_type' => 'Biaya Seragam & Atribut',
+            'notes' => 'Pelunasan seragam sekolah',
+        ]);
+        $pay3Response->assertSessionHas('success');
+
+        // 5. Verifikasi di Tampilan Administrasi Admin / Bendahara:
+        // - Harus otomatis di-global menjadi 1 baris untuk calon siswa ini
+        // - Nominal total terglobal: Rp 1.000.000 (150rb + 350rb + 500rb)
+        // - Jumlah transaksi: 3x Transaksi (Global)
+        // - Seluruh riwayat transaksi (3 pembayaran) tetap utuh tersimpan di sistem
+        $adminView = $this->actingAs($admin)->get('/admin/dashboard?view=administrasi');
+        $adminView->assertStatus(200);
+        $adminView->assertSee('AHMAD SYAHRIR');
+        $adminView->assertSee('271099');
+        $adminView->assertSee('Rp 1.000.000');
+        $adminView->assertSee('3x Transaksi (Global)');
+        $adminView->assertSee('Terverifikasi');
+
+        // 6. Verifikasi di Akun Calon Siswa (Portal Murid):
+        // Siswa dapat melihat besaran nominal pembayaran lewat akun masing-masing
+        $muridView = $this->actingAs($siswa)->get('/murid/dashboard');
+        $muridView->assertStatus(200);
+        $muridView->assertSee('Riwayat Pembayaran SPMB');
+        $muridView->assertSee('Rp 1.000.000');
+        $muridView->assertSee('3x');
+        $muridView->assertSee('Terverifikasi Bendahara');
+        $muridView->assertSee('Biaya Formulir Pendaftaran');
+        $muridView->assertSee('Daftar Ulang (Tahap 1)');
+        $muridView->assertSee('Biaya Seragam & Atribut');
+
+        // 7. Verifikasi Cetak Kwitansi Satuan & Kwitansi Global
+        $payment1 = Payment::where('registration_id', $registration->id)->first();
+        $receiptResponse = $this->actingAs($admin)->get(route('admin.administrasi.payment.receipt', $payment1->id));
+        $receiptResponse->assertStatus(200);
+        $receiptResponse->assertSee('BUKTI PEMBAYARAN RESMI SPMB (TUNAI)');
+        $receiptResponse->assertSee('AHMAD SYAHRIR');
+        $receiptResponse->assertSee($payment1->invoice_number);
+
+        $globalReceiptResponse = $this->actingAs($admin)->get(route('admin.administrasi.payment.globalReceipt', $registration->id));
+        $globalReceiptResponse->assertStatus(200);
+        $globalReceiptResponse->assertSee('REKAPITULASI BUKTI PEMBAYARAN KEUANGAN SPMB');
+        $globalReceiptResponse->assertSee('AHMAD SYAHRIR');
+        $globalReceiptResponse->assertSee('Rp 1.000.000');
+        $globalReceiptResponse->assertSee('Satu Juta Rupiah');
+
+        // Akses kwitansi lewat portal siswa
+        $muridReceiptResponse = $this->actingAs($siswa)->get(route('murid.payment.receipt', $payment1->id));
+        $muridReceiptResponse->assertStatus(200);
+
+        $muridGlobalReceiptResponse = $this->actingAs($siswa)->get(route('murid.payment.globalReceipt'));
+        $muridGlobalReceiptResponse->assertStatus(200);
+        $muridGlobalReceiptResponse->assertSee('Rp 1.000.000');
     }
 }
 

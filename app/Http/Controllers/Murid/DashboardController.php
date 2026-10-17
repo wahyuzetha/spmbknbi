@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Murid;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicYear;
+use App\Models\Payment;
 use App\Models\StudentDocument;
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
@@ -18,8 +20,25 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $registration = $user->registration()
-            ->with(['academicYear', 'major', 'secondChoiceMajor', 'biodata', 'parents', 'school', 'documents', 'payments'])
+            ->with([
+                'academicYear',
+                'major',
+                'secondChoiceMajor',
+                'biodata',
+                'parents',
+                'school',
+                'documents',
+                'payments' => function ($q) {
+                    $q->with('confirmedBy')->latest('payment_date')->latest('id');
+                }
+            ])
             ->first();
+
+        // Hitung total nominal pembayaran yang telah diverifikasi
+        $studentPayments = $registration ? $registration->payments : collect();
+        $confirmedPayments = $studentPayments->where('status', 'confirmed');
+        $totalPaid = $confirmedPayments->sum('amount');
+        $transactionCount = $studentPayments->count();
 
         // Hitung kelengkapan berkas yang diunggah
         $requiredDocs = ['kartu_keluarga', 'akta_kelahiran', 'ijazah_skl'];
@@ -29,7 +48,17 @@ class DashboardController extends Controller
 
         $settings = SystemSetting::pluck('value', 'key');
 
-        return view('murid.dashboard', compact('user', 'registration', 'progressPercentage', 'settings', 'uploadedDocs'));
+        return view('murid.dashboard', compact(
+            'user',
+            'registration',
+            'progressPercentage',
+            'settings',
+            'uploadedDocs',
+            'studentPayments',
+            'confirmedPayments',
+            'totalPaid',
+            'transactionCount'
+        ));
     }
 
     /**
@@ -94,5 +123,41 @@ class DashboardController extends Controller
         $settings = SystemSetting::pluck('value', 'key');
 
         return view('murid.cetak-kartu', compact('user', 'registration', 'settings'));
+    }
+
+    /**
+     * Cetak Kwitansi Resmi Pembayaran Satuan oleh Calon Siswa.
+     */
+    public function printPaymentReceipt(int $id)
+    {
+        $user = Auth::user();
+        $registration = $user->registration()->firstOrFail();
+
+        $payment = Payment::with(['registration.user', 'registration.major', 'registration.school', 'confirmedBy'])
+            ->where('registration_id', $registration->id)
+            ->findOrFail($id);
+
+        $academicYear = $registration->academicYear ?? AcademicYear::where('is_active', true)->first();
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.payment_receipt', compact('payment', 'registration', 'settings', 'academicYear'));
+    }
+
+    /**
+     * Cetak Rekapitulasi / Kwitansi Global Pembayaran oleh Calon Siswa.
+     */
+    public function printGlobalReceipt()
+    {
+        $user = Auth::user();
+        $registration = $user->registration()
+            ->with(['user', 'major', 'school', 'payments.confirmedBy', 'academicYear'])
+            ->firstOrFail();
+
+        $confirmedPayments = $registration->payments->where('status', 'confirmed')->sortBy('payment_date');
+        $totalPaid = $confirmedPayments->sum('amount');
+        $academicYear = $registration->academicYear ?? AcademicYear::where('is_active', true)->first();
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
     }
 }

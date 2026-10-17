@@ -75,7 +75,61 @@ class DashboardController extends Controller
         // 4. Data Pengguna Staf (Panitia PPDB & Administrator) untuk Halaman Data Pengguna
         $staffUsers = User::whereIn('role', ['admin', 'panitia'])->latest()->get();
 
-        // 5. Data Pembayaran
+        // 5. Data Pembayaran Administrasi (Dengan Logika Grouping Global Siswa & Multi-Transaksi)
+        $allPayments = Payment::with(['registration.user', 'registration.major', 'confirmedBy'])
+            ->latest('payment_date')
+            ->latest('id')
+            ->get();
+
+        // Mengelompokkan pembayaran berdasarkan pendaftar (registration_id)
+        // Apabila calon siswa melakukan lebih dari 2 kali transaksi (atau multiple), otomatis di-global menjadi 1 baris
+        // tanpa menghilangkan history pembayaran sebelumnya
+        $groupedPayments = $allPayments->groupBy('registration_id')->map(function ($items, $registrationId) {
+            $first = $items->first();
+            $registration = $first->registration;
+            $confirmedItems = $items->where('status', 'confirmed');
+            $totalAmount = $confirmedItems->sum('amount');
+            if ($totalAmount == 0) {
+                $totalAmount = $items->sum('amount');
+            }
+            $transactionCount = $items->count();
+            $lastPaymentDate = $items->max('payment_date') ?? $items->max('created_at');
+            $lastConfirmedBy = $items->firstWhere('confirmed_by', '!=', null)?->confirmedBy ?? $first->confirmedBy;
+
+            return (object) [
+                'registration_id' => $registrationId,
+                'registration' => $registration,
+                'total_amount' => $totalAmount,
+                'transaction_count' => $transactionCount,
+                'is_multi' => $transactionCount >= 2,
+                'last_payment_date' => $lastPaymentDate,
+                'last_confirmed_by' => $lastConfirmedBy,
+                'payments' => $items, // seluruh history transaksi tanpa ada yang hilang
+            ];
+        })->values();
+
+        // Metrik Keuangan Kas Administrasi SPMB
+        $totalKasMasuk = Payment::where('status', 'confirmed')->sum('amount');
+        $totalSiswaBayar = $groupedPayments->count();
+        $totalTransaksi = $allPayments->count();
+        $multiTransactionCount = $groupedPayments->where('is_multi', true)->count();
+
+        // Data seluruh calon siswa untuk pencarian cepat dropdown input kasir/bendahara
+        $candidatesForPayment = Registration::with(['user', 'major', 'school'])
+            ->latest()
+            ->get()
+            ->map(function ($r) {
+                return (object) [
+                    'id' => $r->id,
+                    'registration_number' => $r->registration_number,
+                    'name' => $r->user->name ?? 'Calon Siswa',
+                    'phone' => $r->user->phone ?? '-',
+                    'school' => $r->school->asal_sekolah ?? '-',
+                    'major' => $r->major->name ?? '-',
+                    'industry_class' => $r->major->industry_class ?? '',
+                ];
+            });
+
         $payments = Payment::with('registration.user')->latest()->paginate(10);
 
         // 6. Pengaturan Sistem & Profil Sekolah
@@ -98,6 +152,13 @@ class DashboardController extends Controller
             'allCalonSiswa',
             'staffUsers',
             'payments',
+            'allPayments',
+            'groupedPayments',
+            'totalKasMasuk',
+            'totalSiswaBayar',
+            'totalTransaksi',
+            'multiTransactionCount',
+            'candidatesForPayment',
             'settings',
             'currentView',
             'profileTab'
@@ -893,6 +954,79 @@ class DashboardController extends Controller
         }
 
         return back()->with('success', "Sebanyak {$count} data calon siswa berhasil dihapus secara massal.");
+    }
+
+    /**
+     * =========================================================================
+     * FITUR ADMINISTRASI PEMBAYARAN KASIR / BENDAHARA SEKOLAH SPMB
+     * =========================================================================
+     */
+
+    /**
+     * Simpan input pembayaran tunai oleh bendahara sekolah.
+     * Otomatis terverifikasi atas nama bendahara yang login dan tercatat di akun siswa.
+     */
+    public function storePayment(Request $request)
+    {
+        $validated = $request->validate([
+            'registration_id' => 'required|exists:pendaftaran,id',
+            'amount' => 'required|numeric|min:1000',
+            'payment_date' => 'required|date',
+            'payment_type' => 'required|string|max:150',
+            'notes' => 'nullable|string|max:255',
+        ]);
+
+        $registration = Registration::with('user')->findOrFail($validated['registration_id']);
+
+        $payment = Payment::create([
+            'registration_id' => $registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => $validated['payment_type'],
+            'amount' => $validated['amount'],
+            'payment_date' => $validated['payment_date'],
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'notes' => $validated['notes'] ?: 'Pembayaran tunai diterima langsung oleh Petugas Bendahara SPMB',
+            'confirmed_by' => auth()->id(),
+            'confirmed_at' => now(),
+        ]);
+
+        $studentName = $registration->user->name ?? 'Calon Siswa';
+        $nominalFormatted = 'Rp ' . number_format($payment->amount, 0, ',', '.');
+
+        return redirect()->route('admin.dashboard', ['view' => 'administrasi'])
+            ->with('success', "Pembayaran tunai {$nominalFormatted} atas nama {$studentName} ({$registration->registration_number}) berhasil disimpan dan otomatis terverifikasi oleh Bendahara!");
+    }
+
+    /**
+     * Cetak Kwitansi Resmi Pembayaran Satuan.
+     */
+    public function printPaymentReceipt(int $id)
+    {
+        $payment = Payment::with(['registration.user', 'registration.major', 'registration.school', 'confirmedBy'])
+            ->findOrFail($id);
+
+        $registration = $payment->registration;
+        $academicYear = AcademicYear::where('is_active', true)->first();
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.payment_receipt', compact('payment', 'registration', 'settings', 'academicYear'));
+    }
+
+    /**
+     * Cetak Rekapitulasi / Kwitansi Global Seluruh Pembayaran Siswa.
+     */
+    public function printGlobalReceipt(int $registrationId)
+    {
+        $registration = Registration::with(['user', 'major', 'school', 'payments.confirmedBy'])
+            ->findOrFail($registrationId);
+
+        $confirmedPayments = $registration->payments->where('status', 'confirmed')->sortBy('payment_date');
+        $totalPaid = $confirmedPayments->sum('amount');
+        $academicYear = AcademicYear::where('is_active', true)->first();
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
     }
 }
 

@@ -1921,44 +1921,520 @@
 
             @endif
 
-            <!-- ================= VIEW F: ADMINISTRASI ================= -->
+            <!-- ================= VIEW F: ADMINISTRASI PEMBAYARAN KASIR / BENDAHARA SPMB ================= -->
             @if($currentView === 'administrasi')
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                
+                <!-- HEADER UTAMA ADMINISTRASI -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl flex-shrink-0">
+                            <i class="fa-solid fa-cash-register"></i>
+                        </div>
                         <div>
-                            <h2 class="text-base font-extrabold text-slate-900">Data Administrasi & Pembayaran SPMB</h2>
-                            <p class="text-xs text-slate-500">Rekapitulasi pembayaran biaya pendaftaran calon siswa</p>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-xl font-black text-slate-900">Administrasi Pembayaran & Kasir SPMB</h1>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Petugas Bendahara
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">
+                                Pencatatan kas masuk pembayaran tunai pendaftaran calon siswa di loket bendahara sekolah secara real-time. Otomatis terverifikasi dan digabung (global) jika terdapat lebih dari satu transaksi tanpa menghilangkan history pembayaran sebelumnya.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" onclick="openInputPaymentModal()" 
+                                class="px-5 py-3 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-xl font-black text-xs transition flex items-center gap-2 shadow-lg transform hover:-translate-y-0.5 cursor-pointer">
+                            <i class="fa-solid fa-plus-circle text-base"></i> + Input Pembayaran Tunai
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3 KARTU STATISTIK KEUANGAN & PEMBAYARAN -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    
+                    <!-- KARTU 1: TOTAL KAS MASUK -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, #00a65a 0%, #00733e 100%);">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-100">TOTAL KAS MASUK (TERVERIFIKASI)</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($totalKasMasuk, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
+                            <span>Total Seluruh Uang Masuk Kas SPMB</span>
+                            <i class="fa-solid fa-circle-check"></i>
                         </div>
                     </div>
 
-                    <div class="overflow-x-auto">
+                    <!-- KARTU 2: TOTAL SISWA TELAH MEMBAYAR -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, #0073b7 0%, #005689 100%);">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-sky-100">SISWA TELAH MEMBAYAR</div>
+                                <div class="text-3xl font-black mt-1">
+                                    {{ $totalSiswaBayar }} <span class="text-sm font-semibold">Siswa</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-sky-100 flex items-center justify-between">
+                            <span>Tercatat Pada Sistem Kasir Bendahara</span>
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                    </div>
+
+                    <!-- KARTU 3: TOTAL TRANSAKSI & ANGSURAN -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, #605ca8 0%, #484482 100%);">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-purple-100">FREKUENSI TRANSAKSI MASUK</div>
+                                <div class="text-3xl font-black mt-1">
+                                    {{ $totalTransaksi }} <span class="text-sm font-semibold">Transaksi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-purple-100 flex items-center justify-between">
+                            <span>{{ $multiTransactionCount }} Siswa multi-transaksi / cicil (digabung)</span>
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- CARD TABEL REKAPITULASI PEMBAYARAN GLOBAL -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    
+                    <!-- HEADER TABEL BANNER TEAL -->
+                    <div class="bg-[#00a65a] px-6 py-3.5 text-white font-bold text-base flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-file-invoice-dollar"></i>
+                            <span>Rekapitulasi Global Pembayaran Calon Siswa (1 Baris per Siswa)</span>
+                        </div>
+                        <span class="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-bold self-start sm:self-auto">
+                            Otomatis Di-Global jika > 1 Kali Transaksi
+                        </span>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        
+                        <!-- TOOLBAR: EXPORT, PRINT & LIVE SEARCH -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <button type="button" onclick="copyTable('table-administrasi')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                    <i class="fa-regular fa-copy"></i> Copy
+                                </button>
+                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.csv')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-file-csv"></i> CSV
+                                </button>
+                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.xlsx')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Excel
+                                </button>
+                                <button type="button" onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                    <i class="fa-solid fa-print"></i> Print
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="font-bold text-slate-600">Pencarian Data:</label>
+                                <input type="text" id="search-administrasi" onkeyup="filterTable('search-administrasi', 'table-administrasi')" 
+                                       placeholder="Cari No. Pendaftar / Nama Siswa..." 
+                                       class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-teal-500 w-56 sm:w-72">
+                            </div>
+                        </div>
+
+                        <!-- TABEL ADMINISTRASI PEMBAYARAN GLOBAL -->
+                        <div class="overflow-x-auto">
+                            <table id="table-administrasi" class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b-2 border-slate-200 font-bold text-slate-700 text-xs">
+                                        <th class="py-3 px-3 w-10 text-center">#</th>
+                                        <th class="py-3 px-3">No. Pendaftar</th>
+                                        <th class="py-3 px-3">Calon Siswa & Kontak</th>
+                                        <th class="py-3 px-3">Pilihan Jurusan</th>
+                                        <th class="py-3 px-3 text-right">Total Pembayaran (Global)</th>
+                                        <th class="py-3 px-3 text-center">Transaksi & Status</th>
+                                        <th class="py-3 px-3">Tgl Terakhir & Bendahara</th>
+                                        <th class="py-3 px-3 text-center w-36">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 font-medium">
+                                    @forelse($groupedPayments as $idx => $item)
+                                        @php
+                                            $reg = $item->registration;
+                                            $userSiswa = $reg?->user;
+                                            $major = $reg?->major;
+                                            $school = $reg?->school;
+                                            
+                                            // Serialize history pembayaran untuk modal popup tanpa menghilangkan transaksi sebelumnya
+                                            $historyList = $item->payments->map(function($p) {
+                                                return [
+                                                    'id' => $p->id,
+                                                    'invoice_number' => $p->invoice_number,
+                                                    'payment_date' => $p->payment_date ? \Carbon\Carbon::parse($p->payment_date)->format('d/m/Y') : \Carbon\Carbon::parse($p->created_at)->format('d/m/Y'),
+                                                    'payment_type' => $p->payment_type,
+                                                    'amount' => $p->amount,
+                                                    'amount_formatted' => 'Rp ' . number_format($p->amount, 0, ',', '.'),
+                                                    'notes' => $p->notes ?: '-',
+                                                    'confirmed_by' => $p->confirmedBy->name ?? 'Bendahara SPMB',
+                                                    'print_url' => route('admin.administrasi.payment.receipt', $p->id),
+                                                ];
+                                            });
+                                        @endphp
+                                        <tr class="hover:bg-slate-50/80 transition">
+                                            <td class="py-3.5 px-3 text-center text-slate-500 font-semibold">{{ $idx + 1 }}</td>
+                                            
+                                            <!-- NO PENDAFTAR -->
+                                            <td class="py-3.5 px-3">
+                                                <span class="font-mono font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                                                    {{ $reg->registration_number ?? '-' }}
+                                                </span>
+                                            </td>
+
+                                            <!-- NAMA CALON SISWA & ASAL SEKOLAH -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="font-bold text-slate-900 text-xs uppercase">
+                                                    {{ $userSiswa->name ?? 'Calon Siswa' }}
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                    <span><i class="fa-solid fa-phone text-slate-400 text-[10px]"></i> {{ $userSiswa->phone ?? '-' }}</span>
+                                                    <span>•</span>
+                                                    <span>{{ $school->asal_sekolah ?? '-' }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- JURUSAN & KELAS INDUSTRI -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="font-bold text-slate-800">
+                                                    {{ $major->name ?? '-' }}
+                                                </div>
+                                                @if(!empty($major->industry_class))
+                                                    <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold text-[10px]">
+                                                        <i class="fa-solid fa-industry text-teal-600"></i>
+                                                        {{ $major->industry_class }}
+                                                    </span>
+                                                @endif
+                                            </td>
+
+                                            <!-- TOTAL PEMBAYARAN GLOBAL -->
+                                            <td class="py-3.5 px-3 text-right">
+                                                <div class="font-mono font-black text-emerald-700 text-sm">
+                                                    Rp {{ number_format($item->total_amount, 0, ',', '.') }}
+                                                </div>
+                                                @if($item->is_multi)
+                                                    <div class="text-[10px] text-emerald-600 font-bold">
+                                                        Total {{ $item->transaction_count }}x Setoran Tunai
+                                                    </div>
+                                                @endif
+                                            </td>
+
+                                            <!-- TRANSAKSI & STATUS VERIFIKASI -->
+                                            <td class="py-3.5 px-3 text-center">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    @if($item->is_multi)
+                                                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-black text-[10px] border border-purple-200 shadow-2xs">
+                                                            <i class="fa-solid fa-layer-group"></i> {{ $item->transaction_count }}x Transaksi (Global)
+                                                        </span>
+                                                    @else
+                                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] border border-slate-200">
+                                                            1x Pembayaran
+                                                        </span>
+                                                    @endif
+
+                                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] border border-emerald-200">
+                                                        <i class="fa-solid fa-circle-check text-emerald-600"></i> Terverifikasi
+                                                    </span>
+                                                </div>
+                                            </td>
+
+                                            <!-- TGL TERAKHIR & PETUGAS BENDAHARA -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="text-slate-700 font-medium">
+                                                    {{ \Carbon\Carbon::parse($item->last_payment_date)->translatedFormat('d F Y') }}
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <i class="fa-solid fa-user-tie text-slate-400"></i>
+                                                    <span>{{ $item->last_confirmed_by->name ?? 'Bendahara' }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- ACTION BUTTONS -->
+                                            <td class="py-3.5 px-3 text-center">
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    
+                                                    <!-- TOMBOL RIWAYAT LENGKAP TRANSAKSI -->
+                                                    <button type="button" 
+                                                            onclick='openPaymentHistoryModal("{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}", "{{ $reg->registration_number }}", "Rp {{ number_format($item->total_amount, 0, ',', '.') }}", {{ json_encode($historyList) }}, "{{ route('admin.administrasi.payment.globalReceipt', $item->registration_id) }}")'
+                                                            class="p-1.5 w-7 h-7 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Lihat Rincian History Transaksi Siswa Ini">
+                                                        <i class="fa-solid fa-clock-rotate-left"></i>
+                                                    </button>
+
+                                                    <!-- TOMBOL INPUT TAMBAH PEMBAYARAN SISWA INI (CICILAN / BERIKUTNYA) -->
+                                                    <button type="button" 
+                                                            onclick="openInputPaymentModal('{{ $item->registration_id }}', '{{ addslashes($userSiswa->name ?? '') }}', '{{ $reg->registration_number }}')"
+                                                            class="p-1.5 w-7 h-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="+ Tambah Pembayaran Kasir untuk Siswa Ini">
+                                                        <i class="fa-solid fa-plus"></i>
+                                                    </button>
+
+                                                    <!-- TOMBOL CETAK KWITANSI REKAPITULASI (GLOBAL) -->
+                                                    <a href="{{ route('admin.administrasi.payment.globalReceipt', $item->registration_id) }}" target="_blank"
+                                                       class="p-1.5 w-7 h-7 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-300 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs"
+                                                       title="Cetak Kwitansi Rekapitulasi Global">
+                                                        <i class="fa-solid fa-print"></i>
+                                                    </a>
+
+                                                </div>
+                                            </td>
+
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                                <i class="fa-solid fa-cash-register text-4xl mb-3 text-slate-300"></i>
+                                                <p class="font-bold text-slate-600">Belum ada transaksi pembayaran administrasi yang diinput.</p>
+                                                <p class="text-xs text-slate-400 mt-1">Klik tombol <strong>"+ Input Pembayaran Tunai"</strong> di atas untuk menginput pembayaran baru.</p>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- FOOTER KETERANGAN ATURAN PENGGABUNGAN GLOBAL -->
+                        <div class="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                <span>Menampilkan <strong>{{ $groupedPayments->count() }}</strong> data siswa terdaftar yang melakukan pembayaran.</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400 font-medium">
+                                * Transaksi berulang dari siswa yang sama otomatis di-global menjadi 1 baris akumulatif tanpa menghapus riwayat sebelumnya.
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            @endif
+
+            <!-- ================= MODAL INPUT PEMBAYARAN TUNAI (BENDAHARA) ================= -->
+            <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+                <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
+                    
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
+                            <i class="fa-solid fa-cash-register text-[#00a65a]"></i>
+                            <h3>Input Pembayaran Tunai Calon Siswa (Bendahara)</h3>
+                        </div>
+                        <button type="button" onclick="closeInputPaymentModal()" class="text-slate-400 hover:text-slate-700">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <form action="{{ route('admin.administrasi.payment.store') }}" method="POST" autocomplete="off" class="space-y-4 text-xs font-medium text-slate-700">
+                        @csrf
+                        
+                        <!-- PENCARIAN & PEMILIHAN CALON SISWA -->
+                        <div class="space-y-1.5">
+                            <label class="font-bold text-slate-800 flex items-center justify-between">
+                                <span>Pilih Calon Siswa (Cari Nama / No. Pendaftar) *</span>
+                                <span class="text-[11px] text-emerald-600 font-semibold" id="student-count-indicator">{{ count($candidatesForPayment ?? []) }} Calon Siswa</span>
+                            </label>
+                            
+                            <!-- INPUT FILTER LIVE DROPDOWN -->
+                            <div class="relative">
+                                <input type="text" id="picker-search-input" onkeyup="filterCandidateDropdown()" 
+                                       placeholder="Ketik nama siswa atau nomor pendaftar untuk mencari..." 
+                                       class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:border-teal-500 mb-1.5">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                            </div>
+
+                            <select name="registration_id" id="payment-student-select" required onchange="onPaymentStudentSelected(this)"
+                                    class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500">
+                                <option value="" disabled selected>-- Pilih Calon Siswa --</option>
+                                @foreach($candidatesForPayment ?? [] as $c)
+                                    <option value="{{ $c->id }}" 
+                                            data-number="{{ $c->registration_number }}" 
+                                            data-name="{{ $c->name }}" 
+                                            data-major="{{ $c->major }}" 
+                                            data-industry="{{ $c->industry_class }}" 
+                                            data-school="{{ $c->school }}" 
+                                            data-phone="{{ $c->phone }}">
+                                        {{ $c->registration_number }} - {{ $c->name }} ({{ $c->major }})
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <!-- KARTU PREVIEW SISWA TERPILIH -->
+                        <div id="payment-student-preview" class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1 text-slate-700 hidden">
+                            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Informasi Pendaftar Terpilih:</div>
+                            <div class="font-bold text-slate-900 text-sm" id="prev-name">-</div>
+                            <div class="text-[11px] text-slate-600 flex items-center gap-2 flex-wrap">
+                                <span>No. Pendaftar: <strong class="font-mono text-emerald-700" id="prev-number">-</strong></span>
+                                <span>•</span>
+                                <span>Jurusan: <strong id="prev-major">-</strong></span>
+                                <span>•</span>
+                                <span>Asal Sekolah: <strong id="prev-school">-</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- GRID 2 KOLOM: TANGGAL & BESARAN NOMINAL -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            
+                            <!-- TANGGAL PEMBAYARAN -->
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Tanggal Pembayaran *</label>
+                                <input type="date" name="payment_date" id="payment-input-date" required value="{{ date('Y-m-d') }}" 
+                                       class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
+                            </div>
+
+                            <!-- JENIS / KATEGORI PEMBAYARAN -->
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Kategori / Jenis Biaya *</label>
+                                <select name="payment_type" id="payment-input-type" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
+                                    <option value="Biaya Formulir Pendaftaran" selected>Biaya Formulir Pendaftaran</option>
+                                    <option value="Daftar Ulang (Tahap 1)">Daftar Ulang (Tahap 1)</option>
+                                    <option value="Daftar Ulang (Tahap 2)">Daftar Ulang (Tahap 2)</option>
+                                    <option value="Biaya Seragam & Atribut">Biaya Seragam & Atribut</option>
+                                    <option value="Biaya Praktik & Asuransi">Biaya Praktik & Asuransi</option>
+                                    <option value="Infaq / Uang Gedung">Infaq / Uang Gedung</option>
+                                    <option value="Pembayaran Biaya Lainnya">Pembayaran Biaya Lainnya</option>
+                                </select>
+                            </div>
+
+                        </div>
+
+                        <!-- INPUT BESARAN NOMINAL DENGAN QUICK BUTTONS -->
+                        <div class="space-y-2">
+                            <label class="font-bold text-slate-800 flex items-center justify-between">
+                                <span>Besaran Nominal Pembayaran (Rp) *</span>
+                                <span class="text-[11px] text-slate-500 font-mono" id="nominal-preview">Rp 0</span>
+                            </label>
+                            <input type="number" name="amount" id="payment-input-amount" required min="1000" step="1000" placeholder="Contoh: 150000"
+                                   oninput="updateNominalPreview(this.value)"
+                                   class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-black font-mono text-emerald-800 focus:bg-white focus:outline-none focus:border-teal-500">
+                            
+                            <!-- QUICK AMOUNT CHIPS -->
+                            <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                                <span class="text-[10px] text-slate-400 font-semibold mr-1">Nominal Cepat:</span>
+                                <button type="button" onclick="setQuickAmount(50000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">50rb</button>
+                                <button type="button" onclick="setQuickAmount(100000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">100rb</button>
+                                <button type="button" onclick="setQuickAmount(150000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">150rb</button>
+                                <button type="button" onclick="setQuickAmount(250000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">250rb</button>
+                                <button type="button" onclick="setQuickAmount(500000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">500rb</button>
+                                <button type="button" onclick="setQuickAmount(1000000)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono font-bold text-[11px] border border-slate-200 transition">1 Juta</button>
+                            </div>
+                        </div>
+
+                        <!-- CATATAN / KETERANGAN -->
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Catatan / Keterangan (Opsional)</label>
+                            <input type="text" name="notes" placeholder="Contoh: Pembayaran tunai lunas di loket bendahara SPMB"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+
+                        <!-- NOTICE VERIFIKASI OTOMATIS OLEH BENDAHARA -->
+                        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-900 text-[11px] space-y-1">
+                            <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+                                <i class="fa-solid fa-circle-check text-emerald-600"></i> Otomatis Terverifikasi & Tersinkronisasi:
+                            </div>
+                            <p class="leading-relaxed">
+                                Pembayaran tunai ini akan langsung <strong>otomatis terverifikasi</strong> oleh sistem atas nama Petugas Bendahara yang sedang login: <strong>{{ auth()->user()->name }}</strong>. Calon siswa dapat langsung melihat nominal dan kwitansi pembayaran di akun portal siswa mereka.
+                            </p>
+                        </div>
+
+                        <!-- TOMBOL SUBMIT & BATAL -->
+                        <div class="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                            <button type="button" onclick="closeInputPaymentModal()" class="px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition">
+                                Batal
+                            </button>
+                            <button type="submit" class="px-6 py-2.5 bg-[#00a65a] hover:bg-[#008f4c] text-white font-black text-xs rounded-lg shadow-md transition flex items-center gap-2">
+                                <i class="fa-solid fa-check-double"></i> Simpan & Otomatis Verifikasi
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- ================= MODAL RINCIAN RIWAYAT PEMBAYARAN SISWA (HISTORY TRANSPARAN) ================= -->
+            <div id="modal-payment-history" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+                <div class="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
+                    
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div>
+                            <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
+                                <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i>
+                                <h3>Riwayat Lengkap Pembayaran Calon Siswa</h3>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-0.5">Daftar seluruh transaksi yang pernah dilakukan siswa ini</p>
+                        </div>
+                        <button type="button" onclick="closePaymentHistoryModal()" class="text-slate-400 hover:text-slate-700">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                    </div>
+
+                    <!-- RINGKASAN SISWA -->
+                    <div class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div>
+                            <div class="text-[11px] text-indigo-700 font-bold uppercase">Calon Siswa</div>
+                            <div class="text-base font-black text-slate-900 uppercase" id="hist-student-name">-</div>
+                            <div class="text-[11px] text-slate-600 font-mono">No. Pendaftar: <strong id="hist-reg-number">-</strong></div>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <div class="text-[11px] text-slate-500 font-bold uppercase">Total Akumulasi Pembayaran</div>
+                            <div class="text-xl font-black text-emerald-700 font-mono" id="hist-total-amount">Rp 0</div>
+                        </div>
+                    </div>
+
+                    <!-- TABEL RIWAYAT TRANSAKSI SATUAN -->
+                    <div class="overflow-x-auto border border-slate-200 rounded-xl">
                         <table class="w-full text-left text-xs border-collapse">
                             <thead>
-                                <tr class="bg-slate-50 border-y border-slate-200 font-extrabold uppercase text-[11px] text-slate-600">
-                                    <th class="py-3 px-3">Invoice</th>
-                                    <th class="py-3 px-3">Calon Siswa</th>
-                                    <th class="py-3 px-3">Nominal</th>
-                                    <th class="py-3 px-3">Metode</th>
-                                    <th class="py-3 px-3">Status</th>
+                                <tr class="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                                    <th class="py-2.5 px-3 text-center w-8">#</th>
+                                    <th class="py-2.5 px-3">Tanggal</th>
+                                    <th class="py-2.5 px-3">No. Invoice</th>
+                                    <th class="py-2.5 px-3">Kategori</th>
+                                    <th class="py-2.5 px-3 text-right">Nominal</th>
+                                    <th class="py-2.5 px-3">Bendahara</th>
+                                    <th class="py-2.5 px-3 text-center w-24">Kwitansi</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-100 font-medium">
-                                @forelse($payments as $pay)
-                                    <tr class="hover:bg-slate-50">
-                                        <td class="py-3 px-3 font-mono font-bold text-blue-600">{{ $pay->invoice_number }}</td>
-                                        <td class="py-3 px-3 font-bold">{{ $pay->registration->user->name ?? '-' }}</td>
-                                        <td class="py-3 px-3 font-bold">Rp {{ number_format($pay->amount, 0, ',', '.') }}</td>
-                                        <td class="py-3 px-3 uppercase">{{ $pay->payment_method }}</td>
-                                        <td class="py-3 px-3 font-bold text-emerald-600">{{ strtoupper($pay->status) }}</td>
-                                    </tr>
-                                @empty
-                                    <tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada transaksi pembayaran tercatat.</td></tr>
-                                @endforelse
+                            <tbody id="hist-tbody" class="divide-y divide-slate-100 font-medium">
+                                <!-- Dynamic Rendered by Javascript -->
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- FOOTER ACTIONS -->
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+                        <button type="button" onclick="closePaymentHistoryModal()" class="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold transition">
+                            Tutup
+                        </button>
+                        <a id="hist-global-receipt-btn" href="#" target="_blank" class="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-print"></i> Cetak Kwitansi Rekapitulasi (Global)
+                        </a>
+                    </div>
+
                 </div>
-            @endif
+            </div>
 
         </main>
 
@@ -2635,6 +3111,156 @@
         function filterStudentTable() {
             studentCurrentPage = 1;
             initStudentPagination();
+        }
+
+        // ================= JAVASCRIPT FITUR ADMINISTRASI PEMBAYARAN KASIR / BENDAHARA =================
+        function openInputPaymentModal(regId = null, name = '', number = '') {
+            const modal = document.getElementById('modal-input-payment');
+            if (!modal) return;
+
+            const selectEl = document.getElementById('payment-student-select');
+            const searchInput = document.getElementById('picker-search-input');
+            const amountInput = document.getElementById('payment-input-amount');
+            const dateInput = document.getElementById('payment-input-date');
+            
+            if (searchInput) searchInput.value = '';
+            filterCandidateDropdown();
+
+            if (regId && selectEl) {
+                selectEl.value = regId;
+                onPaymentStudentSelected(selectEl);
+            } else if (selectEl && selectEl.options.length > 1) {
+                // Jangan paksa jika belum dipilih
+                selectEl.selectedIndex = 0;
+                document.getElementById('payment-student-preview')?.classList.add('hidden');
+            }
+
+            if (amountInput && !regId) {
+                amountInput.value = '';
+                updateNominalPreview(0);
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeInputPaymentModal() {
+            const modal = document.getElementById('modal-input-payment');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function onPaymentStudentSelected(selectEl) {
+            const opt = selectEl.options[selectEl.selectedIndex];
+            const preview = document.getElementById('payment-student-preview');
+            if (!opt || !opt.value) {
+                if (preview) preview.classList.add('hidden');
+                return;
+            }
+
+            const name = opt.getAttribute('data-name') || '-';
+            const number = opt.getAttribute('data-number') || '-';
+            const major = opt.getAttribute('data-major') || '-';
+            const industry = opt.getAttribute('data-industry') || '';
+            const school = opt.getAttribute('data-school') || '-';
+
+            document.getElementById('prev-name').innerText = name;
+            document.getElementById('prev-number').innerText = number;
+            document.getElementById('prev-major').innerText = major + (industry ? ` (${industry})` : '');
+            document.getElementById('prev-school').innerText = school;
+
+            if (preview) preview.classList.remove('hidden');
+        }
+
+        function filterCandidateDropdown() {
+            const input = document.getElementById('picker-search-input');
+            const select = document.getElementById('payment-student-select');
+            if (!input || !select) return;
+
+            const filter = input.value.toLowerCase().trim();
+            let countVisible = 0;
+
+            for (let i = 0; i < select.options.length; i++) {
+                const opt = select.options[i];
+                if (!opt.value) continue; // skip placeholder
+                
+                const text = opt.text.toLowerCase();
+                if (text.includes(filter)) {
+                    opt.style.display = '';
+                    countVisible++;
+                } else {
+                    opt.style.display = 'none';
+                }
+            }
+
+            const indicator = document.getElementById('student-count-indicator');
+            if (indicator) {
+                indicator.innerText = `${countVisible} Calon Siswa Ditemukan`;
+            }
+        }
+
+        function updateNominalPreview(val) {
+            const preview = document.getElementById('nominal-preview');
+            if (!preview) return;
+            const num = parseInt(val) || 0;
+            preview.innerText = 'Rp ' + num.toLocaleString('id-ID');
+        }
+
+        function setQuickAmount(val) {
+            const input = document.getElementById('payment-input-amount');
+            if (input) {
+                input.value = val;
+                updateNominalPreview(val);
+                input.focus();
+            }
+        }
+
+        function openPaymentHistoryModal(studentName, regNumber, totalFormatted, historyList, globalReceiptUrl) {
+            const modal = document.getElementById('modal-payment-history');
+            if (!modal) return;
+
+            document.getElementById('hist-student-name').innerText = studentName;
+            document.getElementById('hist-reg-number').innerText = regNumber;
+            document.getElementById('hist-total-amount').innerText = totalFormatted;
+
+            const btnGlobal = document.getElementById('hist-global-receipt-btn');
+            if (btnGlobal && globalReceiptUrl) {
+                btnGlobal.href = globalReceiptUrl;
+            }
+
+            const tbody = document.getElementById('hist-tbody');
+            if (tbody) {
+                tbody.innerHTML = '';
+                if (!historyList || historyList.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-slate-400">Belum ada riwayat transaksi pembayaran.</td></tr>`;
+                } else {
+                    historyList.forEach((item, index) => {
+                        const tr = document.createElement('tr');
+                        tr.className = 'hover:bg-slate-50 transition';
+                        tr.innerHTML = `
+                            <td class="py-3 px-3 text-center text-slate-500 font-semibold">${index + 1}</td>
+                            <td class="py-3 px-3 font-mono text-slate-700 font-semibold">${item.payment_date}</td>
+                            <td class="py-3 px-3 font-mono font-bold text-blue-700">${item.invoice_number}</td>
+                            <td class="py-3 px-3 font-bold text-slate-900">${item.payment_type}</td>
+                            <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700">${item.amount_formatted}</td>
+                            <td class="py-3 px-3 text-slate-600">${item.confirmed_by}</td>
+                            <td class="py-3 px-3 text-center">
+                                <a href="${item.print_url}" target="_blank" 
+                                   class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                   title="Cetak Kwitansi Satuan Ini">
+                                    <i class="fa-solid fa-print text-emerald-600"></i> Cetak
+                                </a>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closePaymentHistoryModal() {
+            const modal = document.getElementById('modal-payment-history');
+            if (modal) modal.classList.add('hidden');
         }
 
         document.addEventListener('DOMContentLoaded', function() {

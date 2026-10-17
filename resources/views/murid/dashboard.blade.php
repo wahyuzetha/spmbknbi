@@ -173,6 +173,165 @@
 
         </div>
 
+        <!-- ================= 2. INFORMASI ADMINISTRASI & STATUS PEMBAYARAN SISWA ================= -->
+        <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm space-y-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl flex-shrink-0 shadow-2xs">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-extrabold text-slate-900">Informasi & Riwayat Pembayaran SPMB</h3>
+                            @if(($totalPaid ?? 0) > 0)
+                                <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-black border border-emerald-200 flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i> Terverifikasi Bendahara
+                                </span>
+                            @else
+                                <span class="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-bold border border-amber-200">
+                                    Menunggu Pembayaran Loket
+                                </span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5 font-medium">
+                            Besaran nominal uang yang telah Anda bayarkan secara tunai ke petugas bendahara sekolah dan status verifikasinya.
+                        </p>
+                    </div>
+                </div>
+
+                @if(($totalPaid ?? 0) > 0)
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('murid.payment.globalReceipt') }}" target="_blank" 
+                           class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-sm">
+                            <i class="fa-solid fa-print"></i> Cetak Kwitansi Rekapitulasi
+                        </a>
+                    </div>
+                @endif
+            </div>
+
+            <!-- KARTU METRIK NOMINAL PEMBAYARAN SISWA -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                
+                <div class="p-4 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50/60 border border-emerald-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">TOTAL TERBAYAR (GLOBAL)</span>
+                        <div class="text-2xl font-black text-slate-900 font-mono mt-1 text-emerald-800">
+                            Rp {{ number_format($totalPaid ?? 0, 0, ',', '.') }}
+                        </div>
+                        <span class="text-[10px] text-emerald-700 mt-0.5 block">Akumulasi seluruh transaksi tunai</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-emerald-200/60 text-emerald-800 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">FREKUENSI TRANSAKSI</span>
+                        <div class="text-2xl font-black text-slate-900 mt-1">
+                            {{ $transactionCount ?? 0 }}x <span class="text-xs font-bold text-slate-500">Setoran</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 mt-0.5 block">
+                            {{ ($transactionCount ?? 0) > 1 ? 'Otomatis di-global menjadi 1' : 'Tercatat di sistem kasir' }}
+                        </span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-slate-200 text-slate-700 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-layer-group"></i>
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-blue-50/70 border border-blue-200 flex items-center justify-between">
+                    <div>
+                        <span class="text-[11px] font-bold text-blue-800 uppercase tracking-wider block">METODE PEMBAYARAN</span>
+                        <div class="text-base font-black text-blue-900 mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-hand-holding-dollar text-emerald-600"></i> Tunai (Cash)
+                        </div>
+                        <span class="text-[10px] text-blue-700 mt-0.5 block">Loket Bendahara SPMB SMK KNBI</span>
+                    </div>
+                    <div class="w-10 h-10 rounded-xl bg-blue-200/60 text-blue-800 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-building-columns"></i>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TABEL HISTORI TRANSAKSI SISWA (TRANSPARAN TANPA HILANG) -->
+            @if(isset($studentPayments) && $studentPayments->count() > 0)
+                <div class="space-y-2 pt-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i> Rincian Histori Transaksi Pembayaran:
+                    </h4>
+                    <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                                    <th class="py-2.5 px-3 text-center w-8">#</th>
+                                    <th class="py-2.5 px-3">Tanggal Bayar</th>
+                                    <th class="py-2.5 px-3">No. Invoice</th>
+                                    <th class="py-2.5 px-3">Jenis Pembayaran</th>
+                                    <th class="py-2.5 px-3 text-right">Nominal</th>
+                                    <th class="py-2.5 px-3">Petugas Bendahara</th>
+                                    <th class="py-2.5 px-3 text-center w-28">Status</th>
+                                    <th class="py-2.5 px-3 text-center w-24">Kwitansi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100 font-medium">
+                                @foreach($studentPayments as $idx => $p)
+                                    <tr class="hover:bg-slate-50/70 transition">
+                                        <td class="py-3 px-3 text-center text-slate-500 font-semibold">{{ $idx + 1 }}</td>
+                                        <td class="py-3 px-3 font-mono text-slate-800">
+                                            {{ \Carbon\Carbon::parse($p->payment_date ?? $p->created_at)->translatedFormat('d M Y') }}
+                                        </td>
+                                        <td class="py-3 px-3 font-mono font-bold text-blue-700">{{ $p->invoice_number }}</td>
+                                        <td class="py-3 px-3 font-bold text-slate-900">
+                                            {{ $p->payment_type }}
+                                            @if($p->notes)
+                                                <span class="block text-[10px] text-slate-500 font-normal italic">"{{ $p->notes }}"</span>
+                                            @endif
+                                        </td>
+                                        <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700 text-sm">
+                                            Rp {{ number_format($p->amount, 0, ',', '.') }}
+                                        </td>
+                                        <td class="py-3 px-3 text-slate-700">
+                                            <span class="inline-flex items-center gap-1 font-semibold">
+                                                <i class="fa-solid fa-user-check text-emerald-600 text-[10px]"></i>
+                                                {{ $p->confirmedBy->name ?? 'Bendahara SPMB' }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-3 text-center">
+                                            @if($p->status === 'confirmed')
+                                                <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                                                    Terverifikasi
+                                                </span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">
+                                                    {{ strtoupper($p->status) }}
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="py-3 px-3 text-center">
+                                            <a href="{{ route('murid.payment.receipt', $p->id) }}" target="_blank"
+                                               class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-[11px] font-bold inline-flex items-center gap-1 shadow-2xs transition"
+                                               title="Cetak Bukti Pembayaran">
+                                                <i class="fa-solid fa-print text-emerald-600"></i> Cetak
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @else
+                <div class="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
+                    <i class="fa-solid fa-info-circle text-slate-400 text-base mb-1"></i>
+                    <p class="font-bold text-slate-700">Belum ada catatan pembayaran tunai yang masuk.</p>
+                    <p class="text-[11px]">Silakan lakukan pembayaran biaya pendaftaran secara tunai langsung di Loket Panitia / Bendahara SPMB SMK Karya Nugraha Boyolali. Pembayaran Anda akan otomatis terverifikasi dan muncul di tabel ini.</p>
+                </div>
+            @endif
+
+        </div>
+
         <!-- ================= 2. ALUR PROGRES PERSYARATAN ================= -->
         <div class="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-sm">
             <div class="flex items-center justify-between mb-4">
