@@ -86,6 +86,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/administrasi/pembayaran/store', [AdminDashboardController::class, 'storePayment'])->name('administrasi.payment.store');
     Route::get('/administrasi/pembayaran/{id}/kwitansi', [AdminDashboardController::class, 'printPaymentReceipt'])->name('administrasi.payment.receipt');
     Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
+
+    // FITUR PENGELUARAN KAS SPMB (UANG CALON SISWA PENDAFTAR)
+    Route::post('/administrasi/pengeluaran/store', [AdminDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
+    Route::post('/administrasi/pengeluaran/{id}/update', [AdminDashboardController::class, 'updateExpense'])->name('administrasi.expense.update');
+    Route::post('/administrasi/pengeluaran/{id}/delete', [AdminDashboardController::class, 'deleteExpense'])->name('administrasi.expense.delete');
 });
 
 // 5. Portal Panitia SPMB (Protected by Auth & Role: panitia)

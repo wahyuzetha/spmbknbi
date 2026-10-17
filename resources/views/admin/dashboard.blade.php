@@ -146,16 +146,19 @@
             <!-- MENU 4: ADMINISTRASI (DROPDOWN) -->
             <div class="space-y-1">
                 <button type="button" onclick="toggleDropdown('menu-adminitrasi', 'arrow-administrasi')" 
-                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg hover:bg-[#1e282c] hover:text-white transition {{ $currentView === 'administrasi' ? 'text-white font-bold bg-[#1e282c]/80' : '' }}">
+                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg hover:bg-[#1e282c] hover:text-white transition {{ in_array($currentView, ['administrasi', 'pengeluaran']) ? 'text-white font-bold bg-[#1e282c]/80' : '' }}">
                     <div class="flex items-center gap-3">
                         <i class="fa-regular fa-credit-card text-sm w-4 text-center"></i>
                         <span>Administrasi</span>
                     </div>
-                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" id="arrow-administrasi"></i>
+                    <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200 {{ in_array($currentView, ['administrasi', 'pengeluaran']) ? 'rotate-180' : '' }}" id="arrow-administrasi"></i>
                 </button>
-                <div id="menu-adminitrasi" class="pl-8 pr-2 py-1 space-y-1 text-[11px] {{ $currentView === 'administrasi' ? '' : 'hidden' }}">
-                    <a href="{{ route('admin.dashboard', ['view' => 'administrasi']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'administrasi' ? 'text-emerald-400 font-bold' : '' }}">
+                <div id="menu-adminitrasi" class="pl-8 pr-2 py-1 space-y-1 text-[11px] {{ in_array($currentView, ['administrasi', 'pengeluaran']) ? '' : 'hidden' }}">
+                    <a href="{{ route('admin.dashboard', ['view' => 'administrasi']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'administrasi' ? 'text-emerald-400 font-bold bg-[#1a2226]' : '' }}">
                         • Pembayaran Pendaftaran
+                    </a>
+                    <a href="{{ route('admin.dashboard', ['view' => 'pengeluaran']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'pengeluaran' ? 'text-emerald-400 font-bold bg-[#1a2226]' : '' }}">
+                        • Pengeluaran Kas SPMB
                     </a>
                 </div>
             </div>
@@ -1950,10 +1953,22 @@
                     </div>
                 </div>
 
-                <!-- 3 KARTU STATISTIK KEUANGAN & PEMBAYARAN -->
+                <!-- TAB NAVIGASI SUB-MENU ADMINISTRASI & KEUANGAN KAS SPMB -->
+                <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <a href="{{ route('admin.dashboard', ['view' => 'administrasi']) }}" 
+                       class="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shadow-sm bg-[#00a65a] text-white">
+                        <i class="fa-solid fa-cash-register"></i> Pembayaran Calon Siswa (Kas Masuk)
+                    </a>
+                    <a href="{{ route('admin.dashboard', ['view' => 'pengeluaran']) }}" 
+                       class="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition bg-white text-slate-700 hover:bg-slate-100 border border-slate-200">
+                        <i class="fa-solid fa-hand-holding-dollar text-rose-500"></i> Pengeluaran Kas SPMB (Kas Keluar)
+                    </a>
+                </div>
+
+                <!-- 3 KARTU STATISTIK KEUANGAN & PEMBAYARAN: PEMASUKAN, PENGELUARAN & SELISIH SALDO -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
                     
-                    <!-- KARTU 1: TOTAL KAS MASUK -->
+                    <!-- KARTU 1: TOTAL KAS MASUK (PEMASUKAN CALON SISWA) -->
                     <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
                          style="background: linear-gradient(135deg, #00a65a 0%, #00733e 100%);">
                         <div class="flex items-center justify-between">
@@ -1961,55 +1976,55 @@
                                 <i class="fa-solid fa-wallet"></i>
                             </div>
                             <div class="text-right">
-                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-100">TOTAL KAS MASUK (TERVERIFIKASI)</div>
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-100">TOTAL KAS MASUK (PEMASUKAN)</div>
                                 <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
                                     Rp {{ number_format($totalKasMasuk, 0, ',', '.') }}
                                 </div>
                             </div>
                         </div>
                         <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
-                            <span>Total Seluruh Uang Masuk Kas SPMB</span>
+                            <span>Dari {{ $totalSiswaBayar }} Calon Siswa ({{ $totalTransaksi }}x Transaksi)</span>
                             <i class="fa-solid fa-circle-check"></i>
                         </div>
                     </div>
 
-                    <!-- KARTU 2: TOTAL SISWA TELAH MEMBAYAR -->
+                    <!-- KARTU 2: TOTAL PENGELUARAN KAS SPMB -->
                     <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
-                         style="background: linear-gradient(135deg, #0073b7 0%, #005689 100%);">
+                         style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);">
                         <div class="flex items-center justify-between">
                             <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
-                                <i class="fa-solid fa-user-check"></i>
+                                <i class="fa-solid fa-arrow-trend-down"></i>
                             </div>
                             <div class="text-right">
-                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-sky-100">SISWA TELAH MEMBAYAR</div>
-                                <div class="text-3xl font-black mt-1">
-                                    {{ $totalSiswaBayar }} <span class="text-sm font-semibold">Siswa</span>
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-rose-100">TOTAL PENGELUARAN KAS</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($totalPengeluaran, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-rose-100 flex items-center justify-between">
+                            <span>Total Penggunaan Uang Calon Siswa ({{ $allExpenses->count() }} Data)</span>
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                    </div>
+
+                    <!-- KARTU 3: SISA SALDO KAS SPMB (SELISIH PEMASUKAN - PENGELUARAN) -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, {{ $saldoKas >= 0 ? '#0284c7 0%, #0369a1 100%' : '#dc2626 0%, #991b1b 100%' }});">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid {{ $saldoKas >= 0 ? 'fa-scale-balanced' : 'fa-triangle-exclamation' }}"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-sky-100">SISA SALDO KAS (SELISIH)</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($saldoKas, 0, ',', '.') }}
                                 </div>
                             </div>
                         </div>
                         <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-sky-100 flex items-center justify-between">
-                            <span>Tercatat Pada Sistem Kasir Bendahara</span>
-                            <i class="fa-solid fa-users"></i>
-                        </div>
-                    </div>
-
-                    <!-- KARTU 3: TOTAL TRANSAKSI & ANGSURAN -->
-                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
-                         style="background: linear-gradient(135deg, #605ca8 0%, #484482 100%);">
-                        <div class="flex items-center justify-between">
-                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
-                                <i class="fa-solid fa-layer-group"></i>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-purple-100">FREKUENSI TRANSAKSI MASUK</div>
-                                <div class="text-3xl font-black mt-1">
-                                    {{ $totalTransaksi }} <span class="text-sm font-semibold">Transaksi</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-purple-100 flex items-center justify-between">
-                            <span>{{ $multiTransactionCount }} Siswa multi-transaksi / cicil (digabung)</span>
-                            <i class="fa-solid fa-receipt"></i>
+                            <span>{{ $saldoKas >= 0 ? 'Status Keuangan Kas: Surplus / Tersedia' : 'Status: Defisit Kas SPMB' }}</span>
+                            <i class="fa-solid {{ $saldoKas >= 0 ? 'fa-shield-halved' : 'fa-circle-exclamation' }}"></i>
                         </div>
                     </div>
 
@@ -2034,22 +2049,22 @@
                         <!-- TOOLBAR: EXPORT, PRINT & LIVE SEARCH -->
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                             <div class="flex items-center gap-1.5 flex-wrap">
-                                <button type="button" onclick="copyTable('table-administrasi')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                <button type="button" onclick="copyTable('table-administrasi')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
                                     <i class="fa-regular fa-copy"></i> Copy
                                 </button>
-                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.csv')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.csv')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
                                     <i class="fa-solid fa-file-csv"></i> CSV
                                 </button>
-                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.xlsx')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                <button type="button" onclick="exportTableToCSV('table-administrasi', 'administrasi_pembayaran_spmb.xlsx')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
                                     <i class="fa-solid fa-file-excel text-emerald-600"></i> Excel
                                 </button>
-                                <button type="button" onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1">
+                                <button type="button" onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
                                     <i class="fa-solid fa-print"></i> Print
                                 </button>
                             </div>
                             <div class="flex items-center gap-2">
                                 <label class="font-bold text-slate-600">Pencarian Data:</label>
-                                <input type="text" id="search-administrasi" onkeyup="filterTable('search-administrasi', 'table-administrasi')" 
+                                <input type="text" id="search-administrasi" onkeyup="filterAdministrasiTable()" 
                                        placeholder="Cari No. Pendaftar / Nama Siswa..." 
                                        class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-teal-500 w-56 sm:w-72">
                             </div>
@@ -2093,8 +2108,8 @@
                                                 ];
                                             });
                                         @endphp
-                                        <tr class="hover:bg-slate-50/80 transition">
-                                            <td class="py-3.5 px-3 text-center text-slate-500 font-semibold">{{ $idx + 1 }}</td>
+                                        <tr class="hover:bg-slate-50/80 transition administrasi-row">
+                                            <td class="py-3.5 px-3 text-center text-slate-500 font-semibold administrasi-row-no">{{ $idx + 1 }}</td>
                                             
                                             <!-- NO PENDAFTAR -->
                                             <td class="py-3.5 px-3">
@@ -2222,14 +2237,310 @@
                             </table>
                         </div>
 
-                        <!-- FOOTER KETERANGAN ATURAN PENGGABUNGAN GLOBAL -->
-                        <div class="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500">
-                            <div class="flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                                <span>Menampilkan <strong>{{ $groupedPayments->count() }}</strong> data siswa terdaftar yang melakukan pembayaran.</span>
+                        <!-- FOOTER TABEL (SHOWING ENTRIES & PAGINATION PERSIS DATA SISWA - MAKSIMAL 10 DATA) -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 text-xs text-slate-600 border-t border-slate-200">
+                            <div id="administrasi-table-info" class="text-slate-600 font-medium">
+                                Showing 1 to {{ min(10, count($groupedPayments)) }} of {{ count($groupedPayments) }} entries
                             </div>
-                            <div class="text-[11px] text-slate-400 font-medium">
-                                * Transaksi berulang dari siswa yang sama otomatis di-global menjadi 1 baris akumulatif tanpa menghapus riwayat sebelumnya.
+                            <div id="administrasi-table-pagination" class="flex items-center gap-1 select-none">
+                                <span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Previous</span>
+                                <button type="button" class="border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 font-bold px-3 py-1 rounded text-xs shadow-xs mx-0.5">1</button>
+                                <span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Next</span>
+                            </div>
+                        </div>
+
+                        <!-- FOOTER KETERANGAN ATURAN PENGGABUNGAN GLOBAL -->
+                        <div class="pt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                <span>Akumulasi: <strong>{{ $groupedPayments->count() }}</strong> Siswa terdaftar melakukan pembayaran tunai.</span>
+                            </div>
+                            <div>
+                                * Transaksi berulang dari siswa yang sama otomatis di-global menjadi 1 baris tanpa menghapus history sebelumnya.
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            @endif
+
+            <!-- ================= VIEW G: PENGELUARAN KAS SPMB (PENGGUNAAN UANG CALON SISWA) ================= -->
+            @if($currentView === 'pengeluaran')
+                
+                <!-- HEADER UTAMA PENGELUARAN -->
+                <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center text-2xl flex-shrink-0">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h1 class="text-xl font-black text-slate-900">Pengeluaran Kas SPMB & Rekonsiliasi Saldo</h1>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">
+                                    Kas Keluar Bendahara
+                                </span>
+                            </div>
+                            <p class="text-xs text-slate-500 mt-1">
+                                Pencatatan rincian pengeluaran dana calon siswa pendaftar yang telah diinputkan, alokasi kebutuhan panitia SPMB, serta perhitungan selisih pemasukan dan pengeluaran kas secara transparan dan akurat.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" onclick="openAddExpenseModal()" 
+                                class="px-5 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs transition flex items-center gap-2 shadow-lg transform hover:-translate-y-0.5 cursor-pointer">
+                            <i class="fa-solid fa-plus-circle text-base"></i> + Catat Pengeluaran Baru
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB NAVIGASI SUB-MENU ADMINISTRASI & KEUANGAN KAS SPMB -->
+                <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <a href="{{ route('admin.dashboard', ['view' => 'administrasi']) }}" 
+                       class="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition bg-white text-slate-700 hover:bg-slate-100 border border-slate-200">
+                        <i class="fa-solid fa-cash-register"></i> Pembayaran Calon Siswa (Kas Masuk)
+                    </a>
+                    <a href="{{ route('admin.dashboard', ['view' => 'pengeluaran']) }}" 
+                       class="px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition shadow-sm bg-[#00a65a] text-white">
+                        <i class="fa-solid fa-hand-holding-dollar"></i> Pengeluaran Kas SPMB (Kas Keluar)
+                    </a>
+                </div>
+
+                <!-- 3 KARTU STATISTIK KEUANGAN & PEMBAYARAN: PEMASUKAN, PENGELUARAN & SELISIH SALDO -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    
+                    <!-- KARTU 1: TOTAL KAS MASUK (PEMASUKAN CALON SISWA) -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, #00a65a 0%, #00733e 100%);">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-emerald-100">TOTAL KAS MASUK (PEMASUKAN)</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($totalKasMasuk, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-emerald-100 flex items-center justify-between">
+                            <span>Dari {{ $totalSiswaBayar }} Calon Siswa ({{ $totalTransaksi }}x Transaksi)</span>
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                    </div>
+
+                    <!-- KARTU 2: TOTAL PENGELUARAN KAS SPMB -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid fa-arrow-trend-down"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-rose-100">TOTAL PENGELUARAN KAS</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($totalPengeluaran, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-rose-100 flex items-center justify-between">
+                            <span>Total Penggunaan Uang Calon Siswa ({{ $allExpenses->count() }} Data)</span>
+                            <i class="fa-solid fa-receipt"></i>
+                        </div>
+                    </div>
+
+                    <!-- KARTU 3: SISA SALDO KAS SPMB (SELISIH PEMASUKAN - PENGELUARAN) -->
+                    <div class="rounded-xl p-5 text-white shadow-lg relative overflow-hidden"
+                         style="background: linear-gradient(135deg, {{ $saldoKas >= 0 ? '#0284c7 0%, #0369a1 100%' : '#dc2626 0%, #991b1b 100%' }});">
+                        <div class="flex items-center justify-between">
+                            <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl">
+                                <i class="fa-solid {{ $saldoKas >= 0 ? 'fa-scale-balanced' : 'fa-triangle-exclamation' }}"></i>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-extrabold uppercase tracking-widest text-sky-100">SISA SALDO KAS (SELISIH)</div>
+                                <div class="text-2xl sm:text-3xl font-black mt-1 font-mono">
+                                    Rp {{ number_format($saldoKas, 0, ',', '.') }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-white/20 text-[11px] font-semibold text-sky-100 flex items-center justify-between">
+                            <span>{{ $saldoKas >= 0 ? 'Status Keuangan Kas: Surplus / Tersedia' : 'Status: Defisit Kas SPMB' }}</span>
+                            <i class="fa-solid {{ $saldoKas >= 0 ? 'fa-shield-halved' : 'fa-circle-exclamation' }}"></i>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- CARD TABEL REKAPITULASI PENGELUARAN KAS -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    
+                    <!-- HEADER TABEL BANNER ROSE -->
+                    <div class="bg-rose-600 px-6 py-3.5 text-white font-bold text-base flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-receipt"></i>
+                            <span>Daftar Pengeluaran Dana Kas Calon Siswa Pendaftar</span>
+                        </div>
+                        <span class="text-xs bg-white/20 text-white px-3 py-1 rounded-full font-bold self-start sm:self-auto">
+                            Maksimal 10 Baris per Halaman
+                        </span>
+                    </div>
+
+                    <div class="p-5 space-y-4">
+                        
+                        <!-- TOOLBAR: EXPORT, PRINT & LIVE SEARCH -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <button type="button" onclick="copyTable('table-expense')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-regular fa-copy"></i> Copy
+                                </button>
+                                <button type="button" onclick="exportTableToCSV('table-expense', 'pengeluaran_kas_spmb.csv')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-file-csv"></i> CSV
+                                </button>
+                                <button type="button" onclick="exportTableToCSV('table-expense', 'pengeluaran_kas_spmb.xlsx')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-file-excel text-emerald-600"></i> Excel
+                                </button>
+                                <button type="button" onclick="window.print()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-semibold text-slate-700 transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-print"></i> Print
+                                </button>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <label class="font-bold text-slate-600">Pencarian Data:</label>
+                                <input type="text" id="search-expense" onkeyup="filterExpenseTable()" 
+                                       placeholder="Cari Keperluan / Keterangan / Penerima..." 
+                                       class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-rose-500 w-56 sm:w-72">
+                            </div>
+                        </div>
+
+                        <!-- TABEL PENGELUARAN KAS -->
+                        <div class="overflow-x-auto">
+                            <table id="table-expense" class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b-2 border-slate-200 font-bold text-slate-700 text-xs">
+                                        <th class="py-3 px-3 w-10 text-center">#</th>
+                                        <th class="py-3 px-3">No. Bukti Kas</th>
+                                        <th class="py-3 px-3">Keperluan & Kategori</th>
+                                        <th class="py-3 px-3 text-right">Nominal Pengeluaran</th>
+                                        <th class="py-3 px-3">Keterangan Pengeluaran Uang Calon Siswa</th>
+                                        <th class="py-3 px-3">Penerima / Vendor</th>
+                                        <th class="py-3 px-3">Tanggal & Petugas</th>
+                                        <th class="py-3 px-3 text-center w-28">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 font-medium">
+                                    @forelse($allExpenses as $idx => $exp)
+                                        <tr class="hover:bg-slate-50/80 transition expense-row">
+                                            <td class="py-3.5 px-3 text-center text-slate-500 font-semibold expense-row-no">{{ $idx + 1 }}</td>
+                                            
+                                            <!-- KODE BUKTI KAS KELUAR -->
+                                            <td class="py-3.5 px-3">
+                                                <span class="font-mono font-black text-rose-900 bg-rose-50 px-2.5 py-1 rounded border border-rose-200">
+                                                    {{ $exp->expense_code }}
+                                                </span>
+                                            </td>
+
+                                            <!-- KEPERLUAN & KATEGORI -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="font-bold text-slate-900 text-xs">
+                                                    {{ $exp->title }}
+                                                </div>
+                                                <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[10px]">
+                                                    <i class="fa-solid fa-tag text-amber-600"></i>
+                                                    {{ $exp->category ?: 'Operasional SPMB' }}
+                                                </span>
+                                            </td>
+
+                                            <!-- NOMINAL PENGELUARAN -->
+                                            <td class="py-3.5 px-3 text-right">
+                                                <div class="font-mono font-black text-rose-600 text-sm">
+                                                    Rp {{ number_format($exp->amount, 0, ',', '.') }}
+                                                </div>
+                                            </td>
+
+                                            <!-- KETERANGAN PENGELUARAN UANG CALON SISWA PENDAFTAR -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="text-xs text-slate-700 font-medium leading-relaxed max-w-sm bg-slate-50/80 p-2 rounded-lg border border-slate-100">
+                                                    <i class="fa-solid fa-quote-left text-slate-400 mr-1 text-[10px]"></i>
+                                                    {{ $exp->description }}
+                                                </div>
+                                            </td>
+
+                                            <!-- PENERIMA / VENDOR -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                                    <i class="fa-solid fa-user-check text-slate-400"></i>
+                                                    <span>{{ $exp->recipient ?: '-' }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- TANGGAL & PETUGAS -->
+                                            <td class="py-3.5 px-3">
+                                                <div class="text-slate-700 font-medium">
+                                                    {{ \Carbon\Carbon::parse($exp->expense_date)->translatedFormat('d F Y') }}
+                                                </div>
+                                                <div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                                    <i class="fa-solid fa-user-tie text-slate-400"></i>
+                                                    <span>{{ $exp->creator->name ?? 'Bendahara' }}</span>
+                                                </div>
+                                            </td>
+
+                                            <!-- ACTION BUTTONS -->
+                                            <td class="py-3.5 px-3 text-center">
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    
+                                                    <!-- TOMBOL EDIT PENGELUARAN -->
+                                                    <button type="button" 
+                                                            onclick='openEditExpenseModal({{ $exp->id }}, "{{ addslashes($exp->title) }}", "{{ addslashes($exp->category) }}", {{ (float) $exp->amount }}, "{{ \Carbon\Carbon::parse($exp->expense_date)->format('Y-m-d') }}", "{{ addslashes($exp->recipient ?? '') }}", "{{ addslashes($exp->description) }}")'
+                                                            class="p-1.5 w-7 h-7 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg border border-amber-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Edit Catatan Pengeluaran Ini">
+                                                        <i class="fa-solid fa-pen-to-square"></i>
+                                                    </button>
+
+                                                    <!-- TOMBOL HAPUS PENGELUARAN -->
+                                                    <button type="button" 
+                                                            onclick='confirmDeleteExpense({{ $exp->id }}, "{{ addslashes($exp->title) }}", "Rp {{ number_format($exp->amount, 0, ',', '.') }}")'
+                                                            class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Hapus Pengeluaran Ini">
+                                                        <i class="fa-solid fa-trash-can"></i>
+                                                    </button>
+
+                                                </div>
+                                            </td>
+
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                                <i class="fa-solid fa-hand-holding-dollar text-4xl mb-3 text-slate-300"></i>
+                                                <p class="font-bold text-slate-600">Belum ada catatan pengeluaran kas SPMB yang diinput.</p>
+                                                <p class="text-xs text-slate-400 mt-1">Klik tombol <strong>"+ Catat Pengeluaran Baru"</strong> di atas untuk menginput pengeluaran penggunaan dana calon siswa.</p>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- FOOTER TABEL (SHOWING ENTRIES & PAGINATION PERSIS DATA SISWA - MAKSIMAL 10 DATA) -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 text-xs text-slate-600 border-t border-slate-200">
+                            <div id="expense-table-info" class="text-slate-600 font-medium">
+                                Showing 1 to {{ min(10, count($allExpenses)) }} of {{ count($allExpenses) }} entries
+                            </div>
+                            <div id="expense-table-pagination" class="flex items-center gap-1 select-none">
+                                <span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Previous</span>
+                                <button type="button" class="border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 font-bold px-3 py-1 rounded text-xs shadow-xs mx-0.5">1</button>
+                                <span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Next</span>
+                            </div>
+                        </div>
+
+                        <!-- FOOTER KETERANGAN ATURAN PENGELUARAN KAS -->
+                        <div class="pt-2 text-[11px] text-slate-400 flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                                <span>Akumulasi: <strong>{{ $allExpenses->count() }}</strong> Transaksi pengeluaran kas tercatat di sistem.</span>
+                            </div>
+                            <div>
+                                * Seluruh pengeluaran mengurangi total sisa saldo kas SPMB dan direkonsiliasi otomatis.
                             </div>
                         </div>
 
@@ -2433,6 +2744,207 @@
     <form id="form-delete-single-student" action="" method="POST" class="hidden">
         @csrf
     </form>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS PENGELUARAN KAS -->
+    <form id="form-delete-expense" action="" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <!-- ================= MODAL TAMBAH PENGELUARAN KAS SPMB ================= -->
+    <div id="modal-add-expense" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
+                    <i class="fa-solid fa-hand-holding-dollar text-rose-600"></i>
+                    <h3>Catat Pengeluaran Kas SPMB Baru</h3>
+                </div>
+                <button type="button" onclick="closeAddExpenseModal()" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('admin.administrasi.expense.store') }}" method="POST" autocomplete="off" class="space-y-4 text-xs font-medium text-slate-700">
+                @csrf
+                
+                <!-- NAMA / KEPERLUAN PENGELUARAN -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Nama / Keperluan Pengeluaran *</label>
+                    <input type="text" name="title" required placeholder="Contoh: Cetak Formulir & Brosur PPDB Gelombang 1"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <!-- KATEGORI PENGELUARAN -->
+                    <div class="space-y-1.5">
+                        <label class="font-bold text-slate-800">Kategori Biaya</label>
+                        <select name="category" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
+                            <option value="Operasional SPMB">Operasional SPMB</option>
+                            <option value="ATK & Formulir SPMB">ATK & Formulir SPMB</option>
+                            <option value="Brosur & Spanduk Promosi">Brosur & Spanduk Promosi</option>
+                            <option value="Seragam & Atribut Siswa">Seragam & Atribut Siswa</option>
+                            <option value="Konsumsi & Rapat Panitia">Konsumsi & Rapat Panitia</option>
+                            <option value="Pelaksanaan Tes / Ujian">Pelaksanaan Tes / Ujian</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+
+                    <!-- TANGGAL PENGELUARAN -->
+                    <div class="space-y-1.5">
+                        <label class="font-bold text-slate-800">Tanggal Pengeluaran *</label>
+                        <input type="date" name="expense_date" required value="{{ date('Y-m-d') }}"
+                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+
+                <!-- NOMINAL PENGELUARAN KAS -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800">Besaran Nominal Pengeluaran (Rp) *</label>
+                        <span id="add-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
+                        <input type="number" name="amount" id="add-expense-amount" required min="100" step="1"
+                               oninput="updateExpenseNominalPreview(this.value, 'add-expense-nominal-preview')"
+                               placeholder="Masukkan jumlah nominal pengeluaran..."
+                               class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500">
+                    </div>
+                    <!-- Quick Amount Buttons -->
+                    <div class="flex items-center gap-1.5 flex-wrap pt-1">
+                        <button type="button" onclick="setQuickExpenseAmount(50000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">50 Ribu</button>
+                        <button type="button" onclick="setQuickExpenseAmount(100000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">100 Ribu</button>
+                        <button type="button" onclick="setQuickExpenseAmount(250000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">250 Ribu</button>
+                        <button type="button" onclick="setQuickExpenseAmount(500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">500 Ribu</button>
+                        <button type="button" onclick="setQuickExpenseAmount(1000000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">1 Juta</button>
+                        <button type="button" onclick="setQuickExpenseAmount(2500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">2.5 Juta</button>
+                    </div>
+                </div>
+
+                <!-- PENERIMA DANA / VENDOR -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Penerima Dana / Toko / Vendor</label>
+                    <input type="text" name="recipient" placeholder="Contoh: CV Percetakan Mandiri / Sie Perlengkapan PPDB"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
+                </div>
+
+                <!-- KETERANGAN DETAIL PENGELUARAN UANG CALON SISWA PENDAFTAR -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Keterangan Pengeluaran Uang Calon Siswa Pendaftar *</label>
+                    <textarea name="description" rows="3" required
+                              placeholder="Jelaskan rincian dan keperluan pengeluaran uang pendaftaran calon siswa yang telah diinputkan..."
+                              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-rose-500 leading-relaxed"></textarea>
+                    <p class="text-[10px] text-slate-400">Rincian ini dicatat transparan sebagai pertanggungjawaban penggunaan dana kas calon siswa.</p>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeAddExpenseModal()" 
+                            class="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold transition">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black shadow-lg transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-check-circle"></i> Simpan Pengeluaran Kas
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <!-- ================= MODAL EDIT PENGELUARAN KAS SPMB ================= -->
+    <div id="modal-edit-expense" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
+                    <i class="fa-solid fa-pen-to-square text-amber-600"></i>
+                    <h3>Edit Catatan Pengeluaran Kas SPMB</h3>
+                </div>
+                <button type="button" onclick="closeEditExpenseModal()" class="text-slate-400 hover:text-slate-700">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="form-edit-expense" action="" method="POST" autocomplete="off" class="space-y-4 text-xs font-medium text-slate-700">
+                @csrf
+                
+                <!-- NAMA / KEPERLUAN PENGELUARAN -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Nama / Keperluan Pengeluaran *</label>
+                    <input type="text" name="title" id="edit-expense-title" required
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <!-- KATEGORI PENGELUARAN -->
+                    <div class="space-y-1.5">
+                        <label class="font-bold text-slate-800">Kategori Biaya</label>
+                        <select name="category" id="edit-expense-category" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                            <option value="Operasional SPMB">Operasional SPMB</option>
+                            <option value="ATK & Formulir SPMB">ATK & Formulir SPMB</option>
+                            <option value="Brosur & Spanduk Promosi">Brosur & Spanduk Promosi</option>
+                            <option value="Seragam & Atribut Siswa">Seragam & Atribut Siswa</option>
+                            <option value="Konsumsi & Rapat Panitia">Konsumsi & Rapat Panitia</option>
+                            <option value="Pelaksanaan Tes / Ujian">Pelaksanaan Tes / Ujian</option>
+                            <option value="Lain-lain">Lain-lain</option>
+                        </select>
+                    </div>
+
+                    <!-- TANGGAL PENGELUARAN -->
+                    <div class="space-y-1.5">
+                        <label class="font-bold text-slate-800">Tanggal Pengeluaran *</label>
+                        <input type="date" name="expense_date" id="edit-expense-date" required
+                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <!-- NOMINAL PENGELUARAN KAS -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label class="font-bold text-slate-800">Besaran Nominal Pengeluaran (Rp) *</label>
+                        <span id="edit-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
+                        <input type="number" name="amount" id="edit-expense-amount" required min="100" step="1"
+                               oninput="updateExpenseNominalPreview(this.value, 'edit-expense-nominal-preview')"
+                               class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <!-- PENERIMA DANA / VENDOR -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Penerima Dana / Toko / Vendor</label>
+                    <input type="text" name="recipient" id="edit-expense-recipient"
+                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                </div>
+
+                <!-- KETERANGAN DETAIL PENGELUARAN UANG CALON SISWA PENDAFTAR -->
+                <div class="space-y-1.5">
+                    <label class="font-bold text-slate-800">Keterangan Pengeluaran Uang Calon Siswa Pendaftar *</label>
+                    <textarea name="description" id="edit-expense-description" rows="3" required
+                              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-amber-500 leading-relaxed"></textarea>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeEditExpenseModal()" 
+                            class="px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold transition">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-black shadow-lg transition flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-save"></i> Simpan Perubahan
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
 
     <!-- ================= MODAL TAMBAH / EDIT DATA JURUSAN ================= -->
     <div id="modal-major" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
@@ -3257,8 +3769,267 @@
             if (modal) modal.classList.add('hidden');
         }
 
+        // ================= CLIENT-SIDE PAGINATION ADMINISTRASI PEMBAYARAN (MAKSIMAL 10 DATA PERSIS DATA SISWA) =================
+        const administrasiPageSize = 10;
+        let administrasiCurrentPage = 1;
+        let administrasiFilteredRows = [];
+
+        function initAdministrasiPagination() {
+            const table = document.getElementById('table-administrasi');
+            if (!table) return;
+
+            const allRows = Array.from(table.querySelectorAll('tbody tr.administrasi-row'));
+            if (allRows.length === 0) return;
+
+            const query = (document.getElementById('search-administrasi')?.value || '').toLowerCase().trim();
+
+            administrasiFilteredRows = allRows.filter(row => {
+                if (!query) return true;
+                return row.innerText.toLowerCase().includes(query);
+            });
+
+            // Sembunyikan seluruh baris terlebih dahulu
+            allRows.forEach(row => row.style.display = 'none');
+
+            const total = administrasiFilteredRows.length;
+            const totalPages = Math.ceil(total / administrasiPageSize) || 1;
+            if (administrasiCurrentPage > totalPages) administrasiCurrentPage = totalPages;
+            if (administrasiCurrentPage < 1) administrasiCurrentPage = 1;
+
+            const startIdx = (administrasiCurrentPage - 1) * administrasiPageSize;
+            const endIdx = Math.min(startIdx + administrasiPageSize, total);
+
+            // Tampilkan maksimal 10 baris pada halaman aktif
+            for (let i = startIdx; i < endIdx; i++) {
+                if (administrasiFilteredRows[i]) {
+                    administrasiFilteredRows[i].style.display = '';
+                    const noCell = administrrasiFilteredRows[i].querySelector('.administrasi-row-no');
+                    if (noCell) noCell.innerText = i + 1;
+                }
+            }
+
+            // Info text: "Showing 1 to 10 of 15 entries"
+            const infoEl = document.getElementById('administrasi-table-info');
+            if (infoEl) {
+                if (total === 0) {
+                    infoEl.innerText = 'Showing 0 to 0 of 0 entries';
+                } else {
+                    const startDisplay = startIdx + 1;
+                    const endDisplay = endIdx;
+                    if (query && allRows.length !== total) {
+                        infoEl.innerText = `Showing ${startDisplay} to ${endDisplay} of ${total} entries (filtered from ${allRows.length} total entries)`;
+                    } else {
+                        infoEl.innerText = `Showing ${startDisplay} to ${endDisplay} of ${total} entries`;
+                    }
+                }
+            }
+
+            // Tombol Navigasi: Previous  [ 1 ]  [ 2 ]  Next
+            const paginationEl = document.getElementById('administrasi-table-pagination');
+            if (paginationEl) {
+                let html = '';
+
+                // Previous Button
+                if (administrasiCurrentPage === 1) {
+                    html += `<span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Previous</span>`;
+                } else {
+                    html += `<button type="button" onclick="goToAdministrasiPage(${administrasiCurrentPage - 1})" class="text-slate-700 hover:text-slate-900 select-none px-2.5 py-1 text-xs font-medium cursor-pointer transition">Previous</button>`;
+                }
+
+                // Page Number Boxes
+                for (let p = 1; p <= totalPages; p++) {
+                    if (p === administrasiCurrentPage) {
+                        html += `<button type="button" class="border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 font-bold px-3 py-1 rounded text-xs shadow-xs mx-0.5">${p}</button>`;
+                    } else {
+                        html += `<button type="button" onclick="goToAdministrasiPage(${p})" class="border border-transparent hover:border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1 rounded text-xs mx-0.5 transition cursor-pointer">${p}</button>`;
+                    }
+                }
+
+                // Next Button
+                if (administrasiCurrentPage === totalPages || total === 0) {
+                    html += `<span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Next</span>`;
+                } else {
+                    html += `<button type="button" onclick="goToAdministrasiPage(${administrasiCurrentPage + 1})" class="text-slate-700 hover:text-slate-900 select-none px-2.5 py-1 text-xs font-medium cursor-pointer transition">Next</button>`;
+                }
+
+                paginationEl.innerHTML = html;
+            }
+        }
+
+        function goToAdministrasiPage(page) {
+            administrasiCurrentPage = page;
+            initAdministrasiPagination();
+        }
+
+        function filterAdministrasiTable() {
+            administrasiCurrentPage = 1;
+            initAdministrasiPagination();
+        }
+
+        // ================= CLIENT-SIDE PAGINATION PENGELUARAN KAS (MAKSIMAL 10 DATA PERSIS DATA SISWA) =================
+        const expensePageSize = 10;
+        let expenseCurrentPage = 1;
+        let expenseFilteredRows = [];
+
+        function initExpensePagination() {
+            const table = document.getElementById('table-expense');
+            if (!table) return;
+
+            const allRows = Array.from(table.querySelectorAll('tbody tr.expense-row'));
+            if (allRows.length === 0) return;
+
+            const query = (document.getElementById('search-expense')?.value || '').toLowerCase().trim();
+
+            expenseFilteredRows = allRows.filter(row => {
+                if (!query) return true;
+                return row.innerText.toLowerCase().includes(query);
+            });
+
+            // Sembunyikan seluruh baris terlebih dahulu
+            allRows.forEach(row => row.style.display = 'none');
+
+            const total = expenseFilteredRows.length;
+            const totalPages = Math.ceil(total / expensePageSize) || 1;
+            if (expenseCurrentPage > totalPages) expenseCurrentPage = totalPages;
+            if (expenseCurrentPage < 1) expenseCurrentPage = 1;
+
+            const startIdx = (expenseCurrentPage - 1) * expensePageSize;
+            const endIdx = Math.min(startIdx + expensePageSize, total);
+
+            // Tampilkan maksimal 10 baris pada halaman aktif
+            for (let i = startIdx; i < endIdx; i++) {
+                if (expenseFilteredRows[i]) {
+                    expenseFilteredRows[i].style.display = '';
+                    const noCell = expenseFilteredRows[i].querySelector('.expense-row-no');
+                    if (noCell) noCell.innerText = i + 1;
+                }
+            }
+
+            // Info text: "Showing 1 to 10 of 15 entries"
+            const infoEl = document.getElementById('expense-table-info');
+            if (infoEl) {
+                if (total === 0) {
+                    infoEl.innerText = 'Showing 0 to 0 of 0 entries';
+                } else {
+                    const startDisplay = startIdx + 1;
+                    const endDisplay = endIdx;
+                    if (query && allRows.length !== total) {
+                        infoEl.innerText = `Showing ${startDisplay} to ${endDisplay} of ${total} entries (filtered from ${allRows.length} total entries)`;
+                    } else {
+                        infoEl.innerText = `Showing ${startDisplay} to ${endDisplay} of ${total} entries`;
+                    }
+                }
+            }
+
+            // Tombol Navigasi: Previous  [ 1 ]  [ 2 ]  Next
+            const paginationEl = document.getElementById('expense-table-pagination');
+            if (paginationEl) {
+                let html = '';
+
+                // Previous Button
+                if (expenseCurrentPage === 1) {
+                    html += `<span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Previous</span>`;
+                } else {
+                    html += `<button type="button" onclick="goToExpensePage(${expenseCurrentPage - 1})" class="text-slate-700 hover:text-slate-900 select-none px-2.5 py-1 text-xs font-medium cursor-pointer transition">Previous</button>`;
+                }
+
+                // Page Number Boxes
+                for (let p = 1; p <= totalPages; p++) {
+                    if (p === expenseCurrentPage) {
+                        html += `<button type="button" class="border border-slate-300 bg-gradient-to-b from-white to-slate-200 text-slate-800 font-bold px-3 py-1 rounded text-xs shadow-xs mx-0.5">${p}</button>`;
+                    } else {
+                        html += `<button type="button" onclick="goToExpensePage(${p})" class="border border-transparent hover:border-slate-300 hover:bg-slate-100 text-slate-600 px-3 py-1 rounded text-xs mx-0.5 transition cursor-pointer">${p}</button>`;
+                    }
+                }
+
+                // Next Button
+                if (expenseCurrentPage === totalPages || total === 0) {
+                    html += `<span class="text-slate-400 cursor-not-allowed select-none px-2.5 py-1 text-xs">Next</span>`;
+                } else {
+                    html += `<button type="button" onclick="goToExpensePage(${expenseCurrentPage + 1})" class="text-slate-700 hover:text-slate-900 select-none px-2.5 py-1 text-xs font-medium cursor-pointer transition">Next</button>`;
+                }
+
+                paginationEl.innerHTML = html;
+            }
+        }
+
+        function goToExpensePage(page) {
+            expenseCurrentPage = page;
+            initExpensePagination();
+        }
+
+        function filterExpenseTable() {
+            expenseCurrentPage = 1;
+            initExpensePagination();
+        }
+
+        // ================= JAVASCRIPT MODAL PENGELUARAN KAS SPMB =================
+        function openAddExpenseModal() {
+            const modal = document.getElementById('modal-add-expense');
+            if (!modal) return;
+            const amountInput = document.getElementById('add-expense-amount');
+            if (amountInput) amountInput.value = '';
+            updateExpenseNominalPreview(0, 'add-expense-nominal-preview');
+            modal.classList.remove('hidden');
+        }
+
+        function closeAddExpenseModal() {
+            const modal = document.getElementById('modal-add-expense');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function openEditExpenseModal(id, title, category, amount, date, recipient, description) {
+            const modal = document.getElementById('modal-edit-expense');
+            const form = document.getElementById('form-edit-expense');
+            if (!modal || !form) return;
+
+            form.action = `/admin/administrasi/pengeluaran/${id}/update`;
+            document.getElementById('edit-expense-title').value = title;
+            document.getElementById('edit-expense-category').value = category || 'Operasional SPMB';
+            document.getElementById('edit-expense-amount').value = amount;
+            document.getElementById('edit-expense-date').value = date;
+            document.getElementById('edit-expense-recipient').value = recipient || '';
+            document.getElementById('edit-expense-description').value = description;
+
+            updateExpenseNominalPreview(amount, 'edit-expense-nominal-preview');
+            modal.classList.remove('hidden');
+        }
+
+        function closeEditExpenseModal() {
+            const modal = document.getElementById('modal-edit-expense');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function confirmDeleteExpense(id, title, amountFormatted) {
+            if (confirm(`Apakah Anda yakin ingin menghapus catatan pengeluaran "${title}" sebesar ${amountFormatted}?\n\nSisa saldo kas akan otomatis disesuaikan kembali.`)) {
+                const form = document.getElementById('form-delete-expense');
+                if (form) {
+                    form.action = `/admin/administrasi/pengeluaran/${id}/delete`;
+                    form.submit();
+                }
+            }
+        }
+
+        function updateExpenseNominalPreview(val, targetId) {
+            const previewEl = document.getElementById(targetId);
+            if (!previewEl) return;
+            const num = parseFloat(val) || 0;
+            previewEl.innerText = 'Rp ' + num.toLocaleString('id-ID');
+        }
+
+        function setQuickExpenseAmount(val, inputId, previewId) {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.value = val;
+                updateExpenseNominalPreview(val, previewId);
+                input.focus();
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             initStudentPagination();
+            initAdministrasiPagination();
+            initExpensePagination();
         });
     </script>
 

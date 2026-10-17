@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
+use App\Models\Expense;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
@@ -132,7 +133,12 @@ class DashboardController extends Controller
 
         $payments = Payment::with('registration.user')->latest()->paginate(10);
 
-        // 6. Pengaturan Sistem & Profil Sekolah
+        // 6. Data Pengeluaran Kas SPMB (Penggunaan Uang Calon Siswa Pendaftar) & Rekonsiliasi Saldo Kas
+        $allExpenses = Expense::with('creator')->latest('expense_date')->latest('id')->get();
+        $totalPengeluaran = (float) Expense::sum('amount');
+        $saldoKas = (float) ($totalKasMasuk - $totalPengeluaran);
+
+        // 7. Pengaturan Sistem & Profil Sekolah
         $settings = SystemSetting::pluck('value', 'key');
 
         $currentView = $request->get('view', 'dashboard');
@@ -159,6 +165,9 @@ class DashboardController extends Controller
             'totalTransaksi',
             'multiTransactionCount',
             'candidatesForPayment',
+            'allExpenses',
+            'totalPengeluaran',
+            'saldoKas',
             'settings',
             'currentView',
             'profileTab'
@@ -1029,6 +1038,87 @@ class DashboardController extends Controller
         $settings = SystemSetting::pluck('value', 'key');
 
         return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
+    }
+
+    /**
+     * =========================================================================
+     * FITUR PENGELUARAN KAS SPMB (PENGGUNAAN UANG CALON SISWA PENDAFTAR)
+     * =========================================================================
+     */
+
+    /**
+     * Simpan data pengeluaran kas SPMB.
+     */
+    public function storeExpense(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:100',
+            'expense_date' => 'required|date',
+            'category' => 'nullable|string|max:100',
+            'recipient' => 'nullable|string|max:255',
+            'description' => 'required|string',
+        ]);
+
+        $expense = Expense::create([
+            'expense_code' => Expense::generateExpenseCode(),
+            'title' => $validated['title'],
+            'category' => $validated['category'] ?: 'Operasional SPMB',
+            'amount' => $validated['amount'],
+            'expense_date' => $validated['expense_date'],
+            'description' => $validated['description'],
+            'recipient' => $validated['recipient'] ?: 'Panitia / Vendor',
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()
+            ->route('admin.dashboard', ['view' => 'pengeluaran'])
+            ->with('success', "Pengeluaran kas SPMB sebesar Rp " . number_format($expense->amount, 0, ',', '.') . " untuk '{$expense->title}' berhasil dicatat ke sistem.");
+    }
+
+    /**
+     * Update data pengeluaran kas SPMB.
+     */
+    public function updateExpense(Request $request, int $id)
+    {
+        $expense = Expense::findOrFail($id);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'amount' => 'required|numeric|min:100',
+            'expense_date' => 'required|date',
+            'category' => 'nullable|string|max:100',
+            'recipient' => 'nullable|string|max:255',
+            'description' => 'required|string',
+        ]);
+
+        $expense->update([
+            'title' => $validated['title'],
+            'category' => $validated['category'] ?: $expense->category,
+            'amount' => $validated['amount'],
+            'expense_date' => $validated['expense_date'],
+            'description' => $validated['description'],
+            'recipient' => $validated['recipient'] ?: $expense->recipient,
+        ]);
+
+        return redirect()
+            ->route('admin.dashboard', ['view' => 'pengeluaran'])
+            ->with('success', "Data pengeluaran '{$expense->title}' berhasil diperbarui.");
+    }
+
+    /**
+     * Hapus data pengeluaran kas SPMB.
+     */
+    public function deleteExpense(int $id)
+    {
+        $expense = Expense::findOrFail($id);
+        $title = $expense->title;
+        $amount = $expense->amount;
+        $expense->delete();
+
+        return redirect()
+            ->route('admin.dashboard', ['view' => 'pengeluaran'])
+            ->with('success', "Pengeluaran '{$title}' (Rp " . number_format($amount, 0, ',', '.') . ") berhasil dihapus dari sistem.");
     }
 }
 

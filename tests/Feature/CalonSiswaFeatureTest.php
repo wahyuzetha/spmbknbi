@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Expense;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
@@ -487,6 +488,117 @@ class CalonSiswaFeatureTest extends TestCase
         $this->assertDatabaseMissing('pendaftaran', ['id' => $registration->id]);
         $this->assertDatabaseMissing('siswa', ['id' => $siswa->id]);
         $this->assertDatabaseMissing('pembayaran', ['registration_id' => $registration->id]);
+    }
+
+    /**
+     * Test Menu Pengeluaran Kas SPMB, Pencatatan Keterangan Pengeluaran Uang Calon Siswa,
+     * Perhitungan Selisih Pemasukan & Pengeluaran, serta Paginasi Maksimal 10 Data.
+     */
+    public function test_pengeluaran_kas_spmb_dan_selisih_pemasukan_serta_paginasi_administrasi()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        // 1. Verifikasi Halaman Administrasi memuat elemen paginasi maksimal 10 data persis Data Siswa
+        $adminView = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'administrasi']));
+        $adminView->assertStatus(200);
+        $adminView->assertSee('administrasi-table-pagination', false);
+        $adminView->assertSee('administrasi-table-info', false);
+        $adminView->assertSee('administrasi-row', false);
+        $adminView->assertSee('initAdministrasiPagination', false);
+        $adminView->assertSee('TOTAL KAS MASUK (PEMASUKAN)');
+        $adminView->assertSee('TOTAL PENGELUARAN KAS');
+        $adminView->assertSee('SISA SALDO KAS (SELISIH)');
+
+        // 2. Akses View Pengeluaran Kas SPMB
+        $pengeluaranView = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'pengeluaran']));
+        $pengeluaranView->assertStatus(200);
+        $pengeluaranView->assertSee('Pengeluaran Kas SPMB');
+        $pengeluaranView->assertSee('expense-table-pagination', false);
+        $pengeluaranView->assertSee('expense-table-info', false);
+        $pengeluaranView->assertSee('modal-add-expense', false);
+        $pengeluaranView->assertSee('modal-edit-expense', false);
+
+        // 3. Input Pengeluaran Uang Calon Siswa Pendaftar
+        $keteranganPengeluaran = 'Alokasi penggunaan uang pendaftaran calon siswa untuk biaya percetakan formulir pendaftaran F4, map berkas, dan banner SPMB.';
+        $storeResponse = $this->actingAs($admin)->post(route('admin.administrasi.expense.store'), [
+            'title' => 'Pengadaan Formulir dan Brosur PPDB 2026/2027',
+            'category' => 'ATK & Formulir SPMB',
+            'amount' => 750000,
+            'expense_date' => date('Y-m-d'),
+            'recipient' => 'CV Percetakan Mandiri Solo',
+            'description' => $keteranganPengeluaran,
+        ]);
+
+        $storeResponse->assertRedirect(route('admin.dashboard', ['view' => 'pengeluaran']));
+        $storeResponse->assertSessionHas('success');
+
+        // Pastikan tersimpan di database lengkap dengan keterangan penggunaan uang calon siswa
+        $this->assertDatabaseHas('pengeluaran', [
+            'title' => 'Pengadaan Formulir dan Brosur PPDB 2026/2027',
+            'amount' => 750000,
+            'recipient' => 'CV Percetakan Mandiri Solo',
+            'description' => $keteranganPengeluaran,
+            'created_by' => $admin->id,
+        ]);
+
+        $expense = Expense::where('title', 'Pengadaan Formulir dan Brosur PPDB 2026/2027')->first();
+        $this->assertNotNull($expense);
+        $this->assertStringStartsWith('KLR-', $expense->expense_code);
+
+        // 4. Input Pengeluaran Kedua untuk Menguji Selisih Keuangan
+        $storeResponse2 = $this->actingAs($admin)->post(route('admin.administrasi.expense.store'), [
+            'title' => 'Konsumsi Rapat Panitia Sosialisasi SPMB',
+            'category' => 'Konsumsi & Rapat Panitia',
+            'amount' => 250000,
+            'expense_date' => date('Y-m-d'),
+            'recipient' => 'Sie Konsumsi SPMB',
+            'description' => 'Pembelian snack dan makan siang rapat koordinasi pengurus panitia SPMB.',
+        ]);
+        $storeResponse2->assertSessionHas('success');
+
+        // 5. Verifikasi Perhitungan Selisih Pemasukan & Pengeluaran
+        $totalPemasukan = (float) Payment::where('status', 'confirmed')->sum('amount');
+        $totalPengeluaran = (float) Expense::sum('amount');
+        $selisih = $totalPemasukan - $totalPengeluaran;
+
+        $this->assertEquals(1000000, $totalPengeluaran); // 750rb + 250rb
+        $this->assertEquals($totalPemasukan - 1000000, $selisih);
+
+        // Cek bahwa angka selisih dan pengeluaran muncul di dashboard view
+        $viewAfterExpense = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'pengeluaran']));
+        $viewAfterExpense->assertStatus(200);
+        $viewAfterExpense->assertSee('Rp ' . number_format($totalPengeluaran, 0, ',', '.'));
+        $viewAfterExpense->assertSee('Rp ' . number_format($selisih, 0, ',', '.'));
+        $viewAfterExpense->assertSee('Pengadaan Formulir dan Brosur PPDB 2026/2027');
+        $viewAfterExpense->assertSee($keteranganPengeluaran);
+        $viewAfterExpense->assertSee('CV Percetakan Mandiri Solo');
+
+        // 6. Test Edit Pengeluaran
+        $updateResponse = $this->actingAs($admin)->post(route('admin.administrasi.expense.update', $expense->id), [
+            'title' => 'Pengadaan Formulir & Brosur PPDB (Revisi)',
+            'category' => 'ATK & Formulir SPMB',
+            'amount' => 800000,
+            'expense_date' => date('Y-m-d'),
+            'recipient' => 'CV Percetakan Mandiri Solo Baru',
+            'description' => 'Revisi tambahan jumlah cetak formulir pendaftaran calon siswa.',
+        ]);
+        $updateResponse->assertRedirect(route('admin.dashboard', ['view' => 'pengeluaran']));
+        $updateResponse->assertSessionHas('success');
+
+        $this->assertDatabaseHas('pengeluaran', [
+            'id' => $expense->id,
+            'title' => 'Pengadaan Formulir & Brosur PPDB (Revisi)',
+            'amount' => 800000,
+            'recipient' => 'CV Percetakan Mandiri Solo Baru',
+        ]);
+
+        // 7. Test Hapus Pengeluaran
+        $deleteResponse = $this->actingAs($admin)->post(route('admin.administrasi.expense.delete', $expense->id));
+        $deleteResponse->assertRedirect(route('admin.dashboard', ['view' => 'pengeluaran']));
+        $deleteResponse->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('pengeluaran', ['id' => $expense->id]);
     }
 }
 
