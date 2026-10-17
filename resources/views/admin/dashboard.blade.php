@@ -2407,7 +2407,7 @@
                             <div class="flex items-center gap-2">
                                 <label class="font-bold text-slate-600">Pencarian Data:</label>
                                 <input type="text" id="search-expense" onkeyup="filterExpenseTable()" 
-                                       placeholder="Cari Keperluan / Keterangan / Penerima..." 
+                                       placeholder="Cari Keperluan / Keterangan Pengeluaran..." 
                                        class="px-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-rose-500 w-56 sm:w-72">
                             </div>
                         </div>
@@ -2419,10 +2419,9 @@
                                     <tr class="bg-slate-50 border-b-2 border-slate-200 font-bold text-slate-700 text-xs">
                                         <th class="py-3 px-3 w-10 text-center">#</th>
                                         <th class="py-3 px-3">No. Bukti Kas</th>
-                                        <th class="py-3 px-3">Keperluan & Kategori</th>
+                                        <th class="py-3 px-3">Keperluan Pengeluaran</th>
                                         <th class="py-3 px-3 text-right">Nominal Pengeluaran</th>
-                                        <th class="py-3 px-3">Keterangan Pengeluaran Uang Calon Siswa</th>
-                                        <th class="py-3 px-3">Penerima / Vendor</th>
+                                        <th class="py-3 px-3">Keterangan</th>
                                         <th class="py-3 px-3">Tanggal & Petugas</th>
                                         <th class="py-3 px-3 text-center w-28">Action</th>
                                     </tr>
@@ -2439,15 +2438,11 @@
                                                 </span>
                                             </td>
 
-                                            <!-- KEPERLUAN & KATEGORI -->
+                                            <!-- KEPERLUAN PENGELUARAN -->
                                             <td class="py-3.5 px-3">
                                                 <div class="font-bold text-slate-900 text-xs">
                                                     {{ $exp->title }}
                                                 </div>
-                                                <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800 font-bold text-[10px]">
-                                                    <i class="fa-solid fa-tag text-amber-600"></i>
-                                                    {{ $exp->category ?: 'Operasional SPMB' }}
-                                                </span>
                                             </td>
 
                                             <!-- NOMINAL PENGELUARAN -->
@@ -2457,19 +2452,11 @@
                                                 </div>
                                             </td>
 
-                                            <!-- KETERANGAN PENGELUARAN UANG CALON SISWA PENDAFTAR -->
+                                            <!-- KETERANGAN -->
                                             <td class="py-3.5 px-3">
                                                 <div class="text-xs text-slate-700 font-medium leading-relaxed max-w-sm bg-slate-50/80 p-2 rounded-lg border border-slate-100">
                                                     <i class="fa-solid fa-quote-left text-slate-400 mr-1 text-[10px]"></i>
                                                     {{ $exp->description }}
-                                                </div>
-                                            </td>
-
-                                            <!-- PENERIMA / VENDOR -->
-                                            <td class="py-3.5 px-3">
-                                                <div class="font-bold text-slate-800 flex items-center gap-1.5">
-                                                    <i class="fa-solid fa-user-check text-slate-400"></i>
-                                                    <span>{{ $exp->recipient ?: '-' }}</span>
                                                 </div>
                                             </td>
 
@@ -2490,7 +2477,7 @@
                                                     
                                                     <!-- TOMBOL EDIT PENGELUARAN -->
                                                     <button type="button" 
-                                                            onclick='openEditExpenseModal({{ $exp->id }}, "{{ addslashes($exp->title) }}", "{{ addslashes($exp->category) }}", {{ (float) $exp->amount }}, "{{ \Carbon\Carbon::parse($exp->expense_date)->format('Y-m-d') }}", "{{ addslashes($exp->recipient ?? '') }}", "{{ addslashes($exp->description) }}")'
+                                                            onclick='openEditExpenseModal({{ $exp->id }}, "{{ addslashes($exp->title) }}", {{ (float) $exp->amount }}, "{{ \Carbon\Carbon::parse($exp->expense_date)->format('Y-m-d') }}", "{{ addslashes($exp->description) }}")'
                                                             class="p-1.5 w-7 h-7 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg border border-amber-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
                                                             title="Edit Catatan Pengeluaran Ini">
                                                         <i class="fa-solid fa-pen-to-square"></i>
@@ -2510,7 +2497,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                            <td colspan="6" class="py-12 text-center text-slate-400">
                                                 <i class="fa-solid fa-hand-holding-dollar text-4xl mb-3 text-slate-300"></i>
                                                 <p class="font-bold text-slate-600">Belum ada catatan pengeluaran kas SPMB yang diinput.</p>
                                                 <p class="text-xs text-slate-400 mt-1">Klik tombol <strong>"+ Catat Pengeluaran Baru"</strong> di atas untuk menginput pengeluaran penggunaan dana calon siswa.</p>
@@ -2571,7 +2558,7 @@
                         <div class="space-y-1.5">
                             <label class="font-bold text-slate-800 flex items-center justify-between">
                                 <span>Pilih Calon Siswa (Cari Nama / No. Pendaftar) *</span>
-                                <span class="text-[11px] text-emerald-600 font-semibold" id="student-count-indicator">{{ count($candidatesForPayment ?? []) }} Calon Siswa</span>
+                                <span class="text-[11px] text-emerald-600 font-semibold" id="student-count-indicator">Menampilkan 10 Data Pertama</span>
                             </label>
                             
                             <!-- INPUT FILTER LIVE DROPDOWN -->
@@ -2584,9 +2571,11 @@
 
                             <select name="registration_id" id="payment-student-select" required onchange="onPaymentStudentSelected(this)"
                                     class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500">
-                                <option value="" disabled selected>-- Pilih Calon Siswa --</option>
-                                @foreach($candidatesForPayment ?? [] as $c)
+                                <option value="" disabled selected>-- Pilih Calon Siswa (10 Data Pertama) --</option>
+                                @foreach($candidatesForPayment ?? [] as $cIdx => $c)
                                     <option value="{{ $c->id }}" 
+                                            class="candidate-option"
+                                            style="{{ $cIdx >= 10 ? 'display: none;' : '' }}"
                                             data-number="{{ $c->registration_number }}" 
                                             data-name="{{ $c->name }}" 
                                             data-major="{{ $c->major }}" 
@@ -2641,9 +2630,9 @@
                             </div>
                         </div>
 
-                        <!-- CATATAN / KETERANGAN -->
+                        <!-- KETERANGAN (SEBELUMNYA CATATAN) -->
                         <div class="space-y-1">
-                            <label class="font-bold text-slate-800">Catatan / Keterangan (Opsional)</label>
+                            <label class="font-bold text-slate-800">Keterangan (Opsional)</label>
                             <input type="text" name="notes" placeholder="Contoh: Pembayaran tunai lunas di loket bendahara SPMB"
                                    class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-teal-500">
                         </div>
@@ -2774,65 +2763,47 @@
                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
                 </div>
 
+                <!-- TANGGAL & NOMINAL PENGELUARAN KAS -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <!-- KATEGORI PENGELUARAN -->
-                    <div class="space-y-1.5">
-                        <label class="font-bold text-slate-800">Kategori Biaya</label>
-                        <select name="category" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
-                            <option value="Operasional SPMB">Operasional SPMB</option>
-                            <option value="ATK & Formulir SPMB">ATK & Formulir SPMB</option>
-                            <option value="Brosur & Spanduk Promosi">Brosur & Spanduk Promosi</option>
-                            <option value="Seragam & Atribut Siswa">Seragam & Atribut Siswa</option>
-                            <option value="Konsumsi & Rapat Panitia">Konsumsi & Rapat Panitia</option>
-                            <option value="Pelaksanaan Tes / Ujian">Pelaksanaan Tes / Ujian</option>
-                            <option value="Lain-lain">Lain-lain</option>
-                        </select>
-                    </div>
-
                     <!-- TANGGAL PENGELUARAN -->
                     <div class="space-y-1.5">
                         <label class="font-bold text-slate-800">Tanggal Pengeluaran *</label>
                         <input type="date" name="expense_date" required value="{{ date('Y-m-d') }}"
                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
                     </div>
-                </div>
 
-                <!-- NOMINAL PENGELUARAN KAS -->
-                <div class="space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <label class="font-bold text-slate-800">Besaran Nominal Pengeluaran (Rp) *</label>
-                        <span id="add-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
-                    </div>
-                    <div class="relative">
-                        <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
-                        <input type="number" name="amount" id="add-expense-amount" required min="100" step="1"
-                               oninput="updateExpenseNominalPreview(this.value, 'add-expense-nominal-preview')"
-                               placeholder="Masukkan jumlah nominal pengeluaran..."
-                               class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500">
-                    </div>
-                    <!-- Quick Amount Buttons -->
-                    <div class="flex items-center gap-1.5 flex-wrap pt-1">
-                        <button type="button" onclick="setQuickExpenseAmount(50000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">50 Ribu</button>
-                        <button type="button" onclick="setQuickExpenseAmount(100000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">100 Ribu</button>
-                        <button type="button" onclick="setQuickExpenseAmount(250000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">250 Ribu</button>
-                        <button type="button" onclick="setQuickExpenseAmount(500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">500 Ribu</button>
-                        <button type="button" onclick="setQuickExpenseAmount(1000000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">1 Juta</button>
-                        <button type="button" onclick="setQuickExpenseAmount(2500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">2.5 Juta</button>
+                    <!-- NOMINAL PENGELUARAN KAS -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="font-bold text-slate-800">Besaran Nominal (Rp) *</label>
+                            <span id="add-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
+                            <input type="number" name="amount" id="add-expense-amount" required min="100" step="1"
+                                   oninput="updateExpenseNominalPreview(this.value, 'add-expense-nominal-preview')"
+                                   placeholder="0"
+                                   class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-500">
+                        </div>
                     </div>
                 </div>
 
-                <!-- PENERIMA DANA / VENDOR -->
-                <div class="space-y-1.5">
-                    <label class="font-bold text-slate-800">Penerima Dana / Toko / Vendor</label>
-                    <input type="text" name="recipient" placeholder="Contoh: CV Percetakan Mandiri / Sie Perlengkapan PPDB"
-                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-rose-500">
+                <!-- Quick Amount Buttons -->
+                <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span class="text-[10px] text-slate-400 font-semibold mr-1">Nominal Cepat:</span>
+                    <button type="button" onclick="setQuickExpenseAmount(50000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">50 Ribu</button>
+                    <button type="button" onclick="setQuickExpenseAmount(100000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">100 Ribu</button>
+                    <button type="button" onclick="setQuickExpenseAmount(250000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">250 Ribu</button>
+                    <button type="button" onclick="setQuickExpenseAmount(500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">500 Ribu</button>
+                    <button type="button" onclick="setQuickExpenseAmount(1000000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">1 Juta</button>
+                    <button type="button" onclick="setQuickExpenseAmount(2500000, 'add-expense-amount', 'add-expense-nominal-preview')" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-[10px] font-semibold text-slate-700 transition">2.5 Juta</button>
                 </div>
 
-                <!-- KETERANGAN DETAIL PENGELUARAN UANG CALON SISWA PENDAFTAR -->
+                <!-- KETERANGAN PENGELUARAN UANG CALON SISWA PENDAFTAR -->
                 <div class="space-y-1.5">
-                    <label class="font-bold text-slate-800">Keterangan Pengeluaran Uang Calon Siswa Pendaftar *</label>
+                    <label class="font-bold text-slate-800">Keterangan *</label>
                     <textarea name="description" rows="3" required
-                              placeholder="Jelaskan rincian dan keperluan pengeluaran uang pendaftaran calon siswa yang telah diinputkan..."
+                              placeholder="Jelaskan rincian dan keterangan pengeluaran uang pendaftaran calon siswa yang telah diinputkan..."
                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-rose-500 leading-relaxed"></textarea>
                     <p class="text-[10px] text-slate-400">Rincian ini dicatat transparan sebagai pertanggungjawaban penggunaan dana kas calon siswa.</p>
                 </div>
@@ -2861,7 +2832,7 @@
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
                     <i class="fa-solid fa-pen-to-square text-amber-600"></i>
-                    <h3>Edit Catatan Pengeluaran Kas SPMB</h3>
+                    <h3>Edit Pengeluaran Kas SPMB</h3>
                 </div>
                 <button type="button" onclick="closeEditExpenseModal()" class="text-slate-400 hover:text-slate-700">
                     <i class="fa-solid fa-xmark text-lg"></i>
@@ -2878,53 +2849,33 @@
                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
                 </div>
 
+                <!-- TANGGAL & NOMINAL PENGELUARAN KAS -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <!-- KATEGORI PENGELUARAN -->
-                    <div class="space-y-1.5">
-                        <label class="font-bold text-slate-800">Kategori Biaya</label>
-                        <select name="category" id="edit-expense-category" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
-                            <option value="Operasional SPMB">Operasional SPMB</option>
-                            <option value="ATK & Formulir SPMB">ATK & Formulir SPMB</option>
-                            <option value="Brosur & Spanduk Promosi">Brosur & Spanduk Promosi</option>
-                            <option value="Seragam & Atribut Siswa">Seragam & Atribut Siswa</option>
-                            <option value="Konsumsi & Rapat Panitia">Konsumsi & Rapat Panitia</option>
-                            <option value="Pelaksanaan Tes / Ujian">Pelaksanaan Tes / Ujian</option>
-                            <option value="Lain-lain">Lain-lain</option>
-                        </select>
-                    </div>
-
                     <!-- TANGGAL PENGELUARAN -->
                     <div class="space-y-1.5">
                         <label class="font-bold text-slate-800">Tanggal Pengeluaran *</label>
                         <input type="date" name="expense_date" id="edit-expense-date" required
                                class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
                     </div>
-                </div>
 
-                <!-- NOMINAL PENGELUARAN KAS -->
-                <div class="space-y-1.5">
-                    <div class="flex items-center justify-between">
-                        <label class="font-bold text-slate-800">Besaran Nominal Pengeluaran (Rp) *</label>
-                        <span id="edit-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
+                    <!-- NOMINAL PENGELUARAN KAS -->
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="font-bold text-slate-800">Besaran Nominal (Rp) *</label>
+                            <span id="edit-expense-nominal-preview" class="text-xs font-mono font-bold text-rose-600">Rp 0</span>
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
+                            <input type="number" name="amount" id="edit-expense-amount" required min="100" step="1"
+                                   oninput="updateExpenseNominalPreview(this.value, 'edit-expense-nominal-preview')"
+                                   class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-amber-500">
+                        </div>
                     </div>
-                    <div class="relative">
-                        <span class="absolute left-3.5 top-2.5 font-bold text-slate-400">Rp</span>
-                        <input type="number" name="amount" id="edit-expense-amount" required min="100" step="1"
-                               oninput="updateExpenseNominalPreview(this.value, 'edit-expense-nominal-preview')"
-                               class="w-full pl-11 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-amber-500">
-                    </div>
-                </div>
-
-                <!-- PENERIMA DANA / VENDOR -->
-                <div class="space-y-1.5">
-                    <label class="font-bold text-slate-800">Penerima Dana / Toko / Vendor</label>
-                    <input type="text" name="recipient" id="edit-expense-recipient"
-                           class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
                 </div>
 
                 <!-- KETERANGAN DETAIL PENGELUARAN UANG CALON SISWA PENDAFTAR -->
                 <div class="space-y-1.5">
-                    <label class="font-bold text-slate-800">Keterangan Pengeluaran Uang Calon Siswa Pendaftar *</label>
+                    <label class="font-bold text-slate-800">Keterangan *</label>
                     <textarea name="description" id="edit-expense-description" rows="3" required
                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none focus:border-amber-500 leading-relaxed"></textarea>
                 </div>
@@ -3633,6 +3584,12 @@
             filterCandidateDropdown();
 
             if (regId && selectEl) {
+                for (let i = 0; i < selectEl.options.length; i++) {
+                    if (selectEl.options[i].value == regId) {
+                        selectEl.options[i].style.display = '';
+                        break;
+                    }
+                }
                 selectEl.value = regId;
                 onPaymentStudentSelected(selectEl);
             } else if (selectEl && selectEl.options.length > 1) {
@@ -3689,17 +3646,30 @@
                 if (!opt.value) continue; // skip placeholder
                 
                 const text = opt.text.toLowerCase();
-                if (text.includes(filter)) {
-                    opt.style.display = '';
-                    countVisible++;
+                if (!filter) {
+                    if (countVisible < 10) {
+                        opt.style.display = '';
+                        countVisible++;
+                    } else {
+                        opt.style.display = 'none';
+                    }
                 } else {
-                    opt.style.display = 'none';
+                    if (text.includes(filter)) {
+                        opt.style.display = '';
+                        countVisible++;
+                    } else {
+                        opt.style.display = 'none';
+                    }
                 }
             }
 
             const indicator = document.getElementById('student-count-indicator');
             if (indicator) {
-                indicator.innerText = `${countVisible} Calon Siswa Ditemukan`;
+                if (!filter) {
+                    indicator.innerText = 'Menampilkan 10 Data Pertama';
+                } else {
+                    indicator.innerText = `${countVisible} Calon Siswa Ditemukan`;
+                }
             }
         }
 
@@ -3978,17 +3948,15 @@
             if (modal) modal.classList.add('hidden');
         }
 
-        function openEditExpenseModal(id, title, category, amount, date, recipient, description) {
+        function openEditExpenseModal(id, title, amount, date, description) {
             const modal = document.getElementById('modal-edit-expense');
             const form = document.getElementById('form-edit-expense');
             if (!modal || !form) return;
 
             form.action = `/admin/administrasi/pengeluaran/${id}/update`;
             document.getElementById('edit-expense-title').value = title;
-            document.getElementById('edit-expense-category').value = category || 'Operasional SPMB';
             document.getElementById('edit-expense-amount').value = amount;
             document.getElementById('edit-expense-date').value = date;
-            document.getElementById('edit-expense-recipient').value = recipient || '';
             document.getElementById('edit-expense-description').value = description;
 
             updateExpenseNominalPreview(amount, 'edit-expense-nominal-preview');

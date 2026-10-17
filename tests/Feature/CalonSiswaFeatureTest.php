@@ -509,6 +509,8 @@ class CalonSiswaFeatureTest extends TestCase
         $adminView->assertSee('TOTAL KAS MASUK (PEMASUKAN)');
         $adminView->assertSee('TOTAL PENGELUARAN KAS');
         $adminView->assertSee('SISA SALDO KAS (SELISIH)');
+        $adminView->assertSee('Menampilkan 10 Data Pertama');
+        $adminView->assertSee('Keterangan (Opsional)');
 
         // 2. Akses View Pengeluaran Kas SPMB
         $pengeluaranView = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'pengeluaran']));
@@ -518,6 +520,10 @@ class CalonSiswaFeatureTest extends TestCase
         $pengeluaranView->assertSee('expense-table-info', false);
         $pengeluaranView->assertSee('modal-add-expense', false);
         $pengeluaranView->assertSee('modal-edit-expense', false);
+        $pengeluaranView->assertSee('Keperluan Pengeluaran');
+        $pengeluaranView->assertSee('Keterangan *');
+        $pengeluaranView->assertDontSee('Penerima / Vendor');
+        $pengeluaranView->assertDontSee('Kategori Biaya');
 
         // 3. Input Pengeluaran Uang Calon Siswa Pendaftar
         $keteranganPengeluaran = 'Alokasi penggunaan uang pendaftaran calon siswa untuk biaya percetakan formulir pendaftaran F4, map berkas, dan banner SPMB.';
@@ -572,7 +578,7 @@ class CalonSiswaFeatureTest extends TestCase
         $viewAfterExpense->assertSee('Rp ' . number_format($selisih, 0, ',', '.'));
         $viewAfterExpense->assertSee('Pengadaan Formulir dan Brosur PPDB 2026/2027');
         $viewAfterExpense->assertSee($keteranganPengeluaran);
-        $viewAfterExpense->assertSee('CV Percetakan Mandiri Solo');
+        $viewAfterExpense->assertSee('Keterangan');
 
         // 6. Test Edit Pengeluaran
         $updateResponse = $this->actingAs($admin)->post(route('admin.administrasi.expense.update', $expense->id), [

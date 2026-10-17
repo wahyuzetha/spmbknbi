@@ -1063,11 +1063,11 @@ class DashboardController extends Controller
         $expense = Expense::create([
             'expense_code' => Expense::generateExpenseCode(),
             'title' => $validated['title'],
-            'category' => $validated['category'] ?: 'Operasional SPMB',
+            'category' => !empty($validated['category']) ? $validated['category'] : 'Operasional SPMB',
             'amount' => $validated['amount'],
             'expense_date' => $validated['expense_date'],
             'description' => $validated['description'],
-            'recipient' => $validated['recipient'] ?: 'Panitia / Vendor',
+            'recipient' => !empty($validated['recipient']) ? $validated['recipient'] : 'Panitia / Vendor',
             'created_by' => auth()->id(),
         ]);
 
@@ -1094,11 +1094,11 @@ class DashboardController extends Controller
 
         $expense->update([
             'title' => $validated['title'],
-            'category' => $validated['category'] ?: $expense->category,
+            'category' => !empty($validated['category']) ? $validated['category'] : $expense->category,
             'amount' => $validated['amount'],
             'expense_date' => $validated['expense_date'],
             'description' => $validated['description'],
-            'recipient' => $validated['recipient'] ?: $expense->recipient,
+            'recipient' => !empty($validated['recipient']) ? $validated['recipient'] : $expense->recipient,
         ]);
 
         return redirect()
