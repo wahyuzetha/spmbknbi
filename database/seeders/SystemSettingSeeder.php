@@ -47,10 +47,14 @@ class SystemSettingSeeder extends Seeder
             ['key' => 'chairman_nip', 'value' => 'NIP. 19780514 200501 1 008', 'group' => 'committee', 'type' => 'text', 'label' => 'NIP/NBM Ketua Panitia'],
             ['key' => 'chairman_signature', 'value' => null, 'group' => 'committee', 'type' => 'file', 'label' => 'File TTD Digital Ketua Panitia'],
             ['key' => 'school_logo', 'value' => null, 'group' => 'branding', 'type' => 'file', 'label' => 'Logo Resmi Sekolah'],
+
+            // Template Pesan Chat Otomatis WhatsApp
+            ['key' => 'wa_message_template', 'value' => "Halo {nama}, kami dari Panitia SPMB {sekolah} menginformasikan bahwa pendaftaran Anda telah tercatat dengan No. Pendaftaran {no_pendaftaran} untuk pilihan jurusan {jurusan}. Status saat ini: {status}.", 'group' => 'whatsapp', 'type' => 'textarea', 'label' => 'Template Pesan Chat Otomatis WhatsApp ke Calon Siswa'],
+            ['key' => 'wa_hotline_template', 'value' => "Halo Panitia SPMB {sekolah}, saya ingin menanyakan perihal informasi pendaftaran siswa baru.", 'group' => 'whatsapp', 'type' => 'textarea', 'label' => 'Template Chat Calon Siswa ke Hotline Panitia'],
         ];
 
         foreach ($settings as $setting) {
-            SystemSetting::updateOrCreate(['key' => $setting['key']], $setting);
+            SystemSetting::firstOrCreate(['key' => $setting['key']], $setting);
         }
     }
 }

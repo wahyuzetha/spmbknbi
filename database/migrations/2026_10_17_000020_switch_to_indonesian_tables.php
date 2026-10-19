@@ -35,7 +35,7 @@ return new class extends Migration
                 $table->string('username', 100)->unique()->nullable();
                 $table->string('email')->unique();
                 $table->string('phone', 20)->nullable();
-                $table->enum('role', ['admin', 'panitia'])->default('panitia')->index();
+                $table->enum('role', ['admin', 'panitia', 'bendahara'])->default('panitia')->index();
                 $table->boolean('is_active')->default(true);
                 $table->string('avatar')->nullable();
                 $table->string('password');

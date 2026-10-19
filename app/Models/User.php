@@ -68,6 +68,11 @@ class User extends Authenticatable
         return $this->role === 'panitia';
     }
 
+    public function isBendahara(): bool
+    {
+        return $this->role === 'bendahara';
+    }
+
     public function isMurid(): bool
     {
         return $this->role === 'murid';

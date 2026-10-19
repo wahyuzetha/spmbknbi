@@ -21,7 +21,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // 1. Akun Super Admin
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['email' => 'admin@smkknbi.sch.id'],
             [
                 'name' => 'Administrator SPMB',
@@ -34,7 +34,7 @@ class UserSeeder extends Seeder
         );
 
         // 2. Akun Panitia PPDB 1 (smkknbi)
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['email' => 'panitia@smkknbi.sch.id'],
             [
                 'name' => 'smkknbi',
@@ -47,13 +47,26 @@ class UserSeeder extends Seeder
         );
 
         // 3. Akun Panitia PPDB 2 (kepala sekolah / kssmkknbi)
-        User::updateOrCreate(
+        User::firstOrCreate(
             ['username' => 'kssmkknbi'],
             [
                 'name' => 'kepala sekolah',
                 'email' => 'kssmkknbi@sch.id',
                 'phone' => '081234567892',
                 'role' => 'panitia',
+                'password' => Hash::make('password'),
+                'is_active' => true,
+            ]
+        );
+
+        // 4. Akun Bendahara SPMB (Kasir & Rekap Pembayaran)
+        User::firstOrCreate(
+            ['username' => 'bendahara'],
+            [
+                'name' => 'Bendahara SPMB',
+                'email' => 'bendahara@smkknbi.sch.id',
+                'phone' => '081234567893',
+                'role' => 'bendahara',
                 'password' => Hash::make('password'),
                 'is_active' => true,
             ]
@@ -248,7 +261,7 @@ class UserSeeder extends Seeder
         foreach ($studentsData as $st) {
             $email = $st['username'] . '@siswa.smkknbi.sch.id';
             
-            $siswa = Siswa::updateOrCreate(
+            $siswa = Siswa::firstOrCreate(
                 ['phone' => $st['phone']],
                 [
                     'name' => $st['name'],
@@ -266,7 +279,7 @@ class UserSeeder extends Seeder
             $major = Major::where('code', $st['major_code'])->first() ?? Major::first();
 
             if ($academicYear && $major) {
-                $registration = Registration::updateOrCreate(
+                $registration = Registration::firstOrCreate(
                     ['registration_number' => $st['reg_no']],
                     [
                         'user_id' => $siswa->id,
@@ -278,7 +291,7 @@ class UserSeeder extends Seeder
                     ]
                 );
 
-                StudentBiodata::updateOrCreate(
+                StudentBiodata::firstOrCreate(
                     ['registration_id' => $registration->id],
                     [
                         'nama_lengkap' => $st['name'],
@@ -303,7 +316,7 @@ class UserSeeder extends Seeder
                     ]
                 );
 
-                StudentParent::updateOrCreate(
+                StudentParent::firstOrCreate(
                     ['registration_id' => $registration->id],
                     [
                         'nama_ayah' => $st['ayah'],
@@ -321,7 +334,7 @@ class UserSeeder extends Seeder
                     ]
                 );
 
-                StudentSchool::updateOrCreate(
+                StudentSchool::firstOrCreate(
                     ['registration_id' => $registration->id],
                     [
                         'asal_sekolah' => $st['school'],

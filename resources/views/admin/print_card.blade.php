@@ -91,12 +91,15 @@
 <body class="antialiased">
 
     @php
+        // Pastikan settings tersedia
+        $settings = $settings ?? $globalSettings ?? [];
+
         // Helper Data Siswa
         $bio = $registration->biodata;
         $sch = $registration->school;
         $prt = $registration->parent ?? $registration->parents;
         $usr = $registration->user ?? $registration->siswa;
-        $academicYearName = $registration->academicYear->name ?? $academicYear->name ?? '2027/2028';
+        $academicYearName = $registration->academicYear->name ?? $academicYear->name ?? ($settings['academic_year'] ?? '2025/2026');
         $pasFoto = $registration->documents ? $registration->documents->where('document_type', 'pas_foto')->first() : null;
 
         // Data Tanggal & Bahasa Indonesia
@@ -132,30 +135,30 @@
             }
         };
 
-        $namaSiswa = $bio->nama_lengkap ?? $usr->name ?? 'Calon Siswa';
-        $tempatLahir = $bio->tempat_lahir ?? 'Boyolali';
-        $tanggalLahir = $bio?->tanggal_lahir ? $formatTgl($bio->tanggal_lahir) : '17 Oktober 2026';
-        $jenisKelamin = ($bio?->jenis_kelamin ?? 'P') === 'L' ? 'Laki-laki' : 'Perempuan';
-        $nisn = $usr?->nisn ?? $bio?->nik ?? '0114574220';
-        $agama = $bio?->agama ?? 'Islam';
-        $asalSekolah = $sch?->asal_sekolah ?? 'SMP NEGERI 3 MOJOSONGO';
-        $namaAyah = $prt?->nama_ayah ?? 'Sigit Ariyanto';
-        $namaIbu = $prt?->nama_ibu ?? 'Almh Dinawulansari';
-        $pekerjaanAyah = $prt?->pekerjaan_ayah ?? 'Sopir/Masinis/Kondektur';
-        $pekerjaanIbu = $prt?->pekerjaan_ibu ?? 'Buruh (Tani/Pabrik/Bangunan)';
+        $namaSiswa = $bio->nama_lengkap ?? $usr->name ?? '-';
+        $tempatLahir = $bio->tempat_lahir ?? '-';
+        $tanggalLahir = $bio?->tanggal_lahir ? $formatTgl($bio->tanggal_lahir) : '-';
+        $jenisKelamin = ($bio?->jenis_kelamin ?? 'L') === 'L' ? 'Laki-laki' : 'Perempuan';
+        $nisn = $usr?->nisn ?? $bio?->nik ?? '-';
+        $agama = $bio?->agama ?? '-';
+        $asalSekolah = $sch?->asal_sekolah ?? '-';
+        $namaAyah = $prt?->nama_ayah ?? '-';
+        $namaIbu = $prt?->nama_ibu ?? '-';
+        $pekerjaanAyah = $prt?->pekerjaan_ayah ?? '-';
+        $pekerjaanIbu = $prt?->pekerjaan_ibu ?? '-';
         
         // Alamat
         $alamatArray = array_filter([
-            $bio?->alamat_jalan ?? 'Rt21/rw03 Sidorejo mliwis',
-            $bio?->desa ? 'Ds. ' . $bio->desa : 'Penggung',
-            $bio?->kecamatan ? 'Kec. ' . $bio->kecamatan : 'Cepogo',
-            $bio?->kabupaten ?? 'Boyolali'
+            $bio?->alamat_jalan,
+            $bio?->desa ? 'Ds. ' . $bio->desa : null,
+            $bio?->kecamatan ? 'Kec. ' . $bio->kecamatan : null,
+            $bio?->kabupaten
         ]);
-        $alamatLengkap = implode(', ', $alamatArray);
+        $alamatLengkap = !empty($alamatArray) ? implode(', ', $alamatArray) : ($bio?->alamat ?? '-');
 
-        $noHp = $bio->no_hp ?? $usr->phone ?? '149790780';
-        $email = $bio->email ?? $usr->email ?? 'sidan@gmail.com';
-        $rekomendasi = $registration->recommendation_by ?? 'Pak Yanto';
+        $noHp = $bio->no_hp ?? $usr->phone ?? '-';
+        $email = $bio->email ?? $usr->email ?? '-';
+        $rekomendasi = $registration->recommendation_by ?? '-';
 
         // Tanggal Dokumen
         $tglDaftar = $registration->created_at ?? now();
@@ -172,8 +175,12 @@
         $jurusanKelas = (!empty($rawKelas) && !str_contains($jurusanNama, $rawKelas)) ? ' (' . $rawKelas . ')' : '';
         $jurusanWithClass = $jurusanNama . $jurusanKelas;
 
+        // Data Resmi Sekolah & Panitia dari Pengaturan Admin
+        $schoolName = $settings['school_name'] ?? 'SMK KARYA NUGRAHA BOYOLALI';
+        $schoolAddress = $settings['school_address'] ?? 'Jl. Tentara Pelajar No. 1, Boyolali, Jawa Tengah';
+        $schoolCity = $settings['school_city'] ?? 'Boyolali';
         $kopBanner = $settings['cop_image_banner'] ?? $copImageBanner ?? null;
-        $chairmanName = $settings['chairman_name'] ?? 'Suparman, ST';
+        $chairmanName = $settings['chairman_name'] ?? 'Ketua Panitia SPMB';
     @endphp
 
     <!-- FLOATING TOP BAR MODERN (HANYA MUNCUL DI LAYAR SCREEN) -->
@@ -203,35 +210,42 @@
     <!-- ========================================================================================= -->
     <div class="sheet">
 
-        <!-- KOP SURAT (DARI HASIL UPLOAD PENGATURAN ADMIN) -->
+        <!-- KOP SURAT (DARI HASIL PENGATURAN ADMIN) -->
         <div class="kop-header mb-3 pb-2 border-b-2 border-slate-900">
             @if(!empty($kopBanner))
                 <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-32 object-contain mx-auto">
             @else
-                <!-- Fallback Kop Resmi SMK Karya Nugraha Boyolali -->
+                <!-- Kop Surat Dinamis dari Pengaturan Admin -->
                 <div class="flex items-center justify-between gap-4 py-1">
                     <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
                         @if(!empty($settings['school_logo'] ?? $schoolLogo))
                             <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
                         @else
-                            <div class="w-16 h-16 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-lg">
-                                LP MA'ARIF
+                            <div class="w-16 h-16 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-sm">
+                                SPMB
                             </div>
                         @endif
                     </div>
                     <div class="flex-1 text-center font-sans">
-                        <h4 class="text-[11px] font-bold tracking-wider uppercase text-slate-800">LEMBAGA PENDIDIKAN MA'ARIF NU CABANG BOYOLALI</h4>
-                        <h2 class="text-xl font-black tracking-wide text-slate-900 uppercase my-0.5">SMK KARYA NUGRAHA BOYOLALI</h2>
-                        <h3 class="text-xs font-black tracking-wider uppercase text-slate-800">TERAKREDITASI A</h3>
+                        @if(!empty($settings['cop_school_name']))
+                            <h2 class="text-base font-black tracking-wide text-slate-900 uppercase my-0.5 whitespace-pre-line">{!! nl2br(e($settings['cop_school_name'])) !!}</h2>
+                        @else
+                            <h2 class="text-xl font-black tracking-wide text-slate-900 uppercase my-0.5">{{ $schoolName }}</h2>
+                        @endif
+                        @if(!empty($settings['cop_school_status']))
+                            <h3 class="text-xs font-black tracking-wider uppercase text-slate-800">{{ $settings['cop_school_status'] }}</h3>
+                        @endif
                         <p class="text-[9px] text-slate-600 mt-0.5 leading-tight">
-                            Konsentrasi Keahlian: 1. TKR (Daihatsu) 2. TBO (Laksana) 3. TSM (Yamaha) 4. TKJ (Axioo & Telkom) 5. LPS (BSI)<br>
-                            Alamat: Jl. Tentara Pelajar No. 1 Boyolali | Telp/WA: {{ $settings['hotline_panitia'] ?? '085290944090' }} | Email: {{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}
+                            Alamat: {{ $settings['cop_school_address'] ?? $schoolAddress }}<br>
+                            Telp/WA: {{ $settings['hotline_panitia'] ?? ($settings['school_phone'] ?? '085290944090') }} | Email: {{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}
                         </p>
                     </div>
-                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center gap-1">
-                        <div class="px-2 py-1 bg-blue-700 text-white font-extrabold text-[10px] rounded">
-                            SMK PK
-                        </div>
+                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
+                        @if(!empty($settings['school_tagline']))
+                            <div class="px-2 py-1 bg-blue-700 text-white font-extrabold text-[10px] rounded text-center">
+                                {{ $settings['school_tagline'] }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -241,8 +255,7 @@
         <div class="text-center my-3">
             <h1 class="text-base sm:text-lg font-black uppercase text-slate-900 leading-snug tracking-tight">
                 BUKTI PENDAFTARAN CALON<br>
-                SISWA BARU SMK KARYA<br>
-                NUGRAHA BOYOLALI<br>
+                SISWA BARU {{ strtoupper($schoolName) }}<br>
                 SISTEM ONLINE<br>
                 TAHUN PELAJARAN {{ $academicYearName }}
             </h1>
@@ -393,24 +406,20 @@
                 <span class="text-[9px] font-semibold text-slate-400 mt-1 uppercase tracking-wider">Foto Calon Siswa</span>
             </div>
 
-            <!-- KANAN: TITIMANGSA, TTD & QR CODE VERIFIKASI -->
-            <div class="text-center w-60">
-                <p class="text-xs text-slate-700 font-medium">Boyolali, {{ $tanggalCetak }}</p>
-                <p class="text-xs font-bold text-slate-900 mt-0.5 tracking-wider">TTD,</p>
+            <!-- KANAN: TITIMANGSA & TTD RESMI KETUA PANITIA -->
+            <div class="text-center w-64">
+                <p class="text-xs text-slate-700 font-medium">{{ $schoolCity }}, {{ $tanggalCetak }}</p>
+                <p class="text-xs font-bold text-slate-900 mt-0.5 tracking-wider">Panitia SPMB,</p>
                 
-                <div class="my-1.5 flex items-center justify-center relative">
+                <div class="h-20 flex items-center justify-center my-1 relative">
                     @if(!empty($settings['chairman_signature']))
-                        <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" class="absolute max-h-16 opacity-85 z-10">
+                        <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" class="max-h-20 object-contain">
+                    @else
+                        <div class="h-16 w-36"></div>
                     @endif
-                    <div class="p-1 rounded-lg bg-white border border-slate-200 shadow-2xs inline-block">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data={{ urlencode('VALID-SPMB-' . $registration->registration_number . '-' . $namaSiswa . '-KOMPETENSI-' . $jurusanNama) }}" alt="QR Code" class="w-18 h-18 object-contain">
-                    </div>
                 </div>
 
                 <p class="text-xs font-black text-slate-950 uppercase tracking-wide underline underline-offset-2">{{ $chairmanName }}</p>
-                @if(!empty($settings['chairman_nip']))
-                    <p class="text-[9px] font-mono-code text-slate-500 mt-0.5">NIP: {{ $settings['chairman_nip'] }}</p>
-                @endif
             </div>
 
         </div>
@@ -423,35 +432,42 @@
     <div class="page-break"></div>
     <div class="sheet">
 
-        <!-- KOP SURAT (DARI HASIL UPLOAD PENGATURAN ADMIN) -->
+        <!-- KOP SURAT (DARI HASIL PENGATURAN ADMIN) -->
         <div class="kop-header mb-3 pb-2 border-b-2 border-slate-900">
             @if(!empty($kopBanner))
                 <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-32 object-contain mx-auto">
             @else
-                <!-- Fallback Kop Resmi SMK Karya Nugraha Boyolali -->
+                <!-- Kop Surat Dinamis dari Pengaturan Admin -->
                 <div class="flex items-center justify-between gap-4 py-1">
                     <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
                         @if(!empty($settings['school_logo'] ?? $schoolLogo))
                             <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
                         @else
-                            <div class="w-16 h-16 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-lg">
-                                LP MA'ARIF
+                            <div class="w-16 h-16 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-sm">
+                                SPMB
                             </div>
                         @endif
                     </div>
                     <div class="flex-1 text-center font-sans">
-                        <h4 class="text-[11px] font-bold tracking-wider uppercase text-slate-800">LEMBAGA PENDIDIKAN MA'ARIF NU CABANG BOYOLALI</h4>
-                        <h2 class="text-xl font-black tracking-wide text-slate-900 uppercase my-0.5">SMK KARYA NUGRAHA BOYOLALI</h2>
-                        <h3 class="text-xs font-black tracking-wider uppercase text-slate-800">TERAKREDITASI A</h3>
+                        @if(!empty($settings['cop_school_name']))
+                            <h2 class="text-base font-black tracking-wide text-slate-900 uppercase my-0.5 whitespace-pre-line">{!! nl2br(e($settings['cop_school_name'])) !!}</h2>
+                        @else
+                            <h2 class="text-xl font-black tracking-wide text-slate-900 uppercase my-0.5">{{ $schoolName }}</h2>
+                        @endif
+                        @if(!empty($settings['cop_school_status']))
+                            <h3 class="text-xs font-black tracking-wider uppercase text-slate-800">{{ $settings['cop_school_status'] }}</h3>
+                        @endif
                         <p class="text-[9px] text-slate-600 mt-0.5 leading-tight">
-                            Konsentrasi Keahlian: 1. TKR (Daihatsu) 2. TBO (Laksana) 3. TSM (Yamaha) 4. TKJ (Axioo & Telkom) 5. LPS (BSI)<br>
-                            Alamat: Jl. Tentara Pelajar No. 1 Boyolali | Telp/WA: {{ $settings['hotline_panitia'] ?? '085290944090' }} | Email: {{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}
+                            Alamat: {{ $settings['cop_school_address'] ?? $schoolAddress }}<br>
+                            Telp/WA: {{ $settings['hotline_panitia'] ?? ($settings['school_phone'] ?? '085290944090') }} | Email: {{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}
                         </p>
                     </div>
-                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center gap-1">
-                        <div class="px-2 py-1 bg-blue-700 text-white font-extrabold text-[10px] rounded">
-                            SMK PK
-                        </div>
+                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
+                        @if(!empty($settings['school_tagline']))
+                            <div class="px-2 py-1 bg-blue-700 text-white font-extrabold text-[10px] rounded text-center">
+                                {{ $settings['school_tagline'] }}
+                            </div>
+                        @endif
                     </div>
                 </div>
             @endif
@@ -490,7 +506,7 @@
             </div>
 
             <p class="leading-relaxed">
-                Berdasarkan Hasil Seleksi Dari PMDK SMK KARYA NUGRAHA BOYOLALI Putra/Putri Bpk/Ibu Pada :
+                Berdasarkan Hasil Seleksi Dari PMDK {{ strtoupper($schoolName) }} Putra/Putri Bpk/Ibu Pada :
             </p>
 
             <div class="pl-4 py-1.5 border-l-2 border-emerald-500 bg-emerald-50/40 rounded-r-xl space-y-1">
@@ -502,16 +518,16 @@
                 <div class="flex">
                     <span class="w-32 text-slate-700 font-medium">Tempat</span>
                     <span class="w-4 text-center font-bold text-slate-400">:</span>
-                    <span class="font-bold text-slate-950 uppercase">{{ $settings['school_name'] ?? 'SMK KARYA NUGRAHA BOYOLALI' }}</span>
+                    <span class="font-bold text-slate-950 uppercase">{{ $schoolName }}</span>
                 </div>
             </div>
 
             <p class="leading-relaxed pt-1">
-                Maka siswa tersebut dinyatakan <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-black border border-emerald-300">DITERIMA</span> Sebagai calon siswa di Kompetensi Keahlian : <strong class="text-slate-950 font-black">{{ $jurusanWithClass }}</strong>, {{ $settings['school_name'] ?? 'SMK Karya Nugraha Boyolali' }} Tahun Pelajaran <strong class="text-slate-950">{{ $academicYearName }}</strong>.
+                Maka siswa tersebut dinyatakan <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 font-black border border-emerald-300">DITERIMA</span> Sebagai calon siswa di Kompetensi Keahlian : <strong class="text-slate-950 font-black">{{ $jurusanWithClass }}</strong>, {{ $schoolName }} Tahun Pelajaran <strong class="text-slate-950">{{ $academicYearName }}</strong>.
             </p>
 
             <p class="leading-relaxed">
-                Sebagai tindak lanjut dimohon untuk kembali ke {{ $settings['school_name'] ?? 'SMK KARYA NUGRAHA BOYOLALI' }} Beserta Orang Tua Pada :
+                Sebagai tindak lanjut dimohon untuk kembali ke {{ $schoolName }} Beserta Orang Tua Pada :
             </p>
 
             <div class="pl-4 py-2 border-l-2 border-blue-500 bg-blue-50/40 rounded-r-xl space-y-1">
@@ -523,12 +539,12 @@
                 <div class="flex">
                     <span class="w-32 text-slate-700 font-medium">Waktu</span>
                     <span class="w-4 text-center font-bold text-slate-400">:</span>
-                    <span class="font-bold text-slate-950">Jam Kerja (08.00 - 14.00 WIB)</span>
+                    <span class="font-bold text-slate-950">Jam Kerja ({{ $settings['hotline_panitia_hours'] ?? '08.00 - 14.00 WIB' }})</span>
                 </div>
                 <div class="flex">
                     <span class="w-32 text-slate-700 font-medium">Tempat</span>
                     <span class="w-4 text-center font-bold text-slate-400">:</span>
-                    <span class="font-bold text-slate-950">Ruang SPMB {{ $settings['school_name'] ?? 'SMK Karya Nugraha Boyolali' }}</span>
+                    <span class="font-bold text-slate-950">Ruang SPMB {{ $schoolName }}</span>
                 </div>
             </div>
 
@@ -540,25 +556,21 @@
                 Waalaikumsalam Wr.Wb
             </div>
 
-            <!-- TTD & QR CODE HALAMAN 2 -->
+            <!-- TTD HALAMAN 2 -->
             <div class="mt-6 pt-3 flex justify-end text-xs">
-                <div class="text-center w-60">
-                    <p class="text-xs text-slate-700 font-medium">Boyolali, {{ $tanggalCetak }}</p>
+                <div class="text-center w-64">
+                    <p class="text-xs text-slate-700 font-medium">{{ $schoolCity }}, {{ $tanggalCetak }}</p>
                     <p class="text-xs font-bold text-slate-900 mt-0.5 tracking-wider">Panitia PMDK/SPMB,</p>
                     
-                    <div class="my-1.5 flex items-center justify-center relative">
+                    <div class="h-20 flex items-center justify-center my-1 relative">
                         @if(!empty($settings['chairman_signature']))
-                            <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" class="absolute max-h-16 opacity-85 z-10">
+                            <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" class="max-h-20 object-contain">
+                        @else
+                            <div class="h-16 w-36"></div>
                         @endif
-                        <div class="p-1 rounded-lg bg-white border border-slate-200 shadow-2xs inline-block">
-                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=90x90&data={{ urlencode('DITERIMA-SPMB-' . $registration->registration_number . '-' . $namaSiswa . '-KOMPETENSI-' . $jurusanNama) }}" alt="QR Code" class="w-18 h-18 object-contain">
-                        </div>
                     </div>
 
                     <p class="text-xs font-black text-slate-950 uppercase tracking-wide underline underline-offset-2">{{ $chairmanName }}</p>
-                    @if(!empty($settings['chairman_nip']))
-                        <p class="text-[9px] font-mono-code text-slate-500 mt-0.5">NIP: {{ $settings['chairman_nip'] }}</p>
-                    @endif
                 </div>
             </div>
 

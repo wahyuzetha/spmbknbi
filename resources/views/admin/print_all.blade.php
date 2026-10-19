@@ -25,7 +25,7 @@
             <span class="text-xs text-slate-500 font-medium">Pratinjau Cetak Rekapitulasi Pendaftar</span>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.spmb.exportExcel', request()->all()) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow">
+            <a href="{{ auth()->check() && auth()->user()->isPanitia() ? route('panitia.spmb.exportExcel', request()->all()) : route('admin.spmb.exportExcel', request()->all()) }}" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow">
                 <i class="fa-solid fa-file-excel"></i> Export Excel
             </a>
             <button type="button" onclick="window.print()" class="px-4 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-lg text-xs font-bold transition flex items-center gap-2 shadow">
@@ -146,8 +146,10 @@
                     @endif
                 </div>
                 <div>
-                    <p class="font-bold underline text-slate-900 uppercase">{{ $settings['chairman_name'] ?? 'H. Bambang Wahyudi, S.Pd., M.Kom.' }}</p>
-                    <p class="text-[11px] text-slate-500 font-mono">NIP. {{ $settings['chairman_nip'] ?? '19780514 200501 1 008' }}</p>
+                    <p class="font-bold underline text-slate-900 uppercase">{{ $settings['chairman_name'] ?? 'Ketua Panitia SPMB' }}</p>
+                    @if(!empty($settings['chairman_nip']))
+                        <p class="text-[11px] text-slate-500 font-mono">NIP. {{ $settings['chairman_nip'] }}</p>
+                    @endif
                 </div>
             </div>
         </div>

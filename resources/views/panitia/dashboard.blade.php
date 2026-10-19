@@ -13,6 +13,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <!-- Chart.js Modern Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -135,6 +138,12 @@
                     </a>
                     <a href="{{ route('panitia.dashboard', ['view' => 'verifikasi', 'status' => 'pending']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
                         • Belum Ujian / Test
+                    </a>
+                    <a href="{{ route('panitia.spmb.exportExcel') }}" class="block py-1.5 px-2 rounded hover:text-emerald-400 hover:bg-[#1a2226] transition text-emerald-400/90 font-medium">
+                        • Unduh / Export Excel
+                    </a>
+                    <a href="{{ route('panitia.spmb.printAll') }}" target="_blank" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition text-slate-300 font-medium">
+                        • Cetak All Rekapitulasi
                     </a>
                 </div>
             </div>
@@ -338,15 +347,118 @@
                         </div>
                     </div>
                     <div class="mt-4 pt-2 border-t border-white/20 flex items-center justify-between text-xs font-bold text-white/95">
-                        <span>Data Pembayaran</span>
+                        <span>Jumlah Siswa Bayar</span>
                         <i class="fa-solid fa-circle-chevron-right group-hover:translate-x-1 transition-transform"></i>
                     </div>
                 </a>
 
             </div>
 
-            <!-- ================= VIEW 1: DASHBOARD UTAMA (TABS PROFILE SEKOLAH) ================= -->
+            <!-- ================= GRAFIK STATISTIK SPMB (JURUSAN & ASAL SMP) ================= -->
             @if($currentView === 'dashboard')
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-900 to-slate-800 p-5 rounded-2xl text-white shadow-md border border-slate-700">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-[#00a884] to-emerald-600 flex items-center justify-center text-xl text-white shadow-inner">
+                                <i class="fa-solid fa-chart-pie"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-black tracking-tight flex items-center gap-2">
+                                    Grafik & Analisis Pendaftar SPMB
+                                </h2>
+                                <p class="text-xs text-slate-300">
+                                    Statistik real-time peminatan kompetensi keahlian dan sebaran asal sekolah pendaftar
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 text-xs">
+                            <span class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-slate-200 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-users text-teal-400"></i> {{ $totalRegistrations }} Total Pendaftar
+                            </span>
+                            <span class="px-3 py-1.5 rounded-lg bg-white/10 border border-white/15 text-slate-200 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-school text-amber-400"></i> {{ $totalUniqueSchools }} SMP/MTs Terdaftar
+                            </span>
+                            <span class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-check-double text-emerald-400"></i> {{ $paidCount }} Siswa Sudah Bayar
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- GRAFIK 1: JUMLAH PENDAFTAR BERDASARKAN JURUSAN -->
+                        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                                            <i class="fa-solid fa-shapes"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-sm font-extrabold text-slate-800">Jumlah Pendaftar per Jurusan</h3>
+                                            <p class="text-[11px] text-slate-400 font-medium">Distribusi peminatan kompetensi keahlian</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-extrabold border border-indigo-100">
+                                        {{ count($chartMajorNames) }} Jurusan
+                                    </span>
+                                </div>
+                                <div class="relative h-64 flex items-center justify-center">
+                                    <canvas id="chartMajorPendaftarPanitia"></canvas>
+                                </div>
+                            </div>
+                            
+                            <!-- Breakdown list jurusan mini -->
+                            <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 gap-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+                                @foreach($majors as $idx => $m)
+                                    <div class="flex items-center justify-between text-xs p-1.5 rounded-lg hover:bg-slate-50 transition">
+                                        <div class="flex items-center gap-2 truncate">
+                                            <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: {{ ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'][$idx % 7] }};"></span>
+                                            <span class="font-bold text-slate-700 truncate" title="{{ $m->name }}">{{ $m->name }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-2 flex-shrink-0 font-mono text-[11px]">
+                                            <span class="font-black text-slate-900">{{ $m->registrations_count }} <span class="text-slate-400 font-normal">siswa</span></span>
+                                            <span class="text-slate-400">/ kuota {{ $m->quota }}</span>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <!-- GRAFIK 2: JUMLAH PENDAFTAR ASAL SMP/MTS -->
+                        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 flex flex-col justify-between">
+                            <div>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-sm">
+                                            <i class="fa-solid fa-school"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-sm font-extrabold text-slate-800">Jumlah Pendaftar Asal SMP / MTs</h3>
+                                            <p class="text-[11px] text-slate-400 font-medium">Asal sekolah pendaftar yang terdaftar di sistem</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 text-[10px] font-extrabold border border-teal-200">
+                                            {{ $totalUniqueSchools }} SMP/MTs Terdaftar
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="relative h-64">
+                                    <canvas id="chartSchoolPendaftarPanitia"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                                <span class="flex items-center gap-1.5 font-medium">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                                    Nama sekolah dengan variasi kosakata berbeda otomatis distandarisasi ke 1 format default resmi (SMPN / SMP N / SMP Negeri digabung).
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= VIEW 1: DASHBOARD UTAMA (TABS PROFILE SEKOLAH) ================= -->
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                     
                     <!-- TAB NAVIGATION HEADER (PERSIS GAMBAR USER) -->
@@ -468,10 +580,27 @@
             <!-- ================= VIEW 2: VERIFIKASI BERKAS PENDAFTAR ================= -->
             @if(in_array($currentView, ['verifikasi', 'pendaftar']))
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
                         <div>
-                            <h2 class="text-base font-extrabold text-slate-900">Meja Verifikasi Berkas Calon Siswa Baru</h2>
-                            <p class="text-xs text-slate-500">Periksa dan tetapkan status keabsahan dokumen pendaftar</p>
+                            <h2 class="text-base font-extrabold text-slate-900">Meja Verifikasi Berkas & Data Calon Siswa Baru</h2>
+                            <p class="text-xs text-slate-500">Periksa berkas, cetak bukti pendaftaran resmi, dan kelola data pendaftar</p>
+                        </div>
+                        <div class="flex items-center flex-wrap gap-2">
+                            <!-- Tombol Export Excel Calon Siswa -->
+                            <a href="{{ route('panitia.spmb.exportExcel', request()->all()) }}" 
+                               class="px-3.5 py-2 bg-white hover:bg-emerald-50 text-[#00a65a] border border-[#00a65a] rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-2xs"
+                               title="Unduh Data Calon Siswa Lengkap dalam Format Excel (.xlsx)">
+                                <i class="fa-regular fa-file-excel text-sm"></i>
+                                <span>Export Excel</span>
+                            </a>
+
+                            <!-- Tombol Cetak All Rekapitulasi -->
+                            <a href="{{ route('panitia.spmb.printAll', request()->all()) }}" target="_blank"
+                               class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-2xs"
+                               title="Cetak Laporan Rekapitulasi Calon Siswa (Print / PDF)">
+                                <i class="fa-solid fa-print text-sm text-slate-600"></i>
+                                <span>Cetak All</span>
+                            </a>
                         </div>
                     </div>
 
@@ -507,7 +636,7 @@
                                     <th class="py-3 px-3">Jurusan</th>
                                     <th class="py-3 px-3">Berkas Terunggah</th>
                                     <th class="py-3 px-3">Status</th>
-                                    <th class="py-3 px-3 text-right">Verifikasi</th>
+                                    <th class="py-3 px-3 text-right">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 font-medium">
@@ -548,10 +677,41 @@
                                             </span>
                                         </td>
                                         <td class="py-3 px-3 text-right">
-                                            <button type="button" onclick="openPanitiaVerifyModal('{{ $reg->id }}', '{{ $reg->registration_number }}', '{{ addslashes($reg->user->name ?? '') }}', '{{ $reg->status }}', '{{ addslashes($reg->verification_notes ?? '') }}')"
-                                                    class="px-3 py-1.5 rounded bg-[#00a65a] hover:bg-[#008f4c] text-white text-[11px] font-bold">
-                                                Verifikasi
-                                            </button>
+                                            <div class="flex items-center justify-end gap-1.5">
+                                                @php
+                                                    $rawWa = preg_replace('/[^0-9]/', '', $reg->user->phone ?? '');
+                                                    if(str_starts_with($rawWa, '0')) {
+                                                        $rawWa = '62' . substr($rawWa, 1);
+                                                    }
+                                                    $waText = \App\Models\SystemSetting::formatWaMessage($reg, $settings['wa_message_template'] ?? null);
+                                                @endphp
+                                                @if(!empty($rawWa))
+                                                    <a href="https://wa.me/{{ $rawWa }}?text={{ urlencode($waText) }}" target="_blank" class="w-7 h-7 rounded bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs" title="Chat WhatsApp Calon Siswa">
+                                                        <i class="fa-brands fa-whatsapp text-xs"></i>
+                                                    </a>
+                                                @endif
+
+                                                <!-- Tombol Edit Calon Siswa (Sama seperti Admin Sebelumnya) -->
+                                                <button type="button" 
+                                                        onclick="openEditStudentModal('{{ $reg->id }}', '{{ addslashes($reg->user->name ?? '') }}', '{{ $reg->user->username ?? $reg->user->phone ?? '' }}', '{{ $reg->user->phone ?? '' }}', '{{ $reg->biodata->jenis_kelamin ?? 'L' }}', '{{ addslashes($reg->school->asal_sekolah ?? '') }}', '{{ $reg->major_id }}')"
+                                                        class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                        title="Edit Data Calon Siswa">
+                                                    <i class="fa-solid fa-pen text-[11px]"></i>
+                                                </button>
+
+                                                <!-- Tombol Cetak Bukti Pendaftaran Calon Siswa -->
+                                                <a href="{{ route('panitia.spmb.printCard', $reg->id) }}" target="_blank"
+                                                   class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                   title="Cetak Bukti Pendaftaran Calon Siswa (F4)">
+                                                    <i class="fa-solid fa-print text-[11px]"></i>
+                                                </a>
+
+                                                <!-- Tombol Verifikasi Berkas -->
+                                                <button type="button" onclick="openPanitiaVerifyModal('{{ $reg->id }}', '{{ $reg->registration_number }}', '{{ addslashes($reg->user->name ?? '') }}', '{{ $reg->status }}', '{{ addslashes($reg->verification_notes ?? '') }}')"
+                                                        class="px-3 py-1.5 rounded bg-[#00a65a] hover:bg-[#008f4c] text-white text-[11px] font-bold cursor-pointer">
+                                                    Verifikasi
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -592,11 +752,16 @@
             <!-- ================= VIEW 4: ADMINISTRASI ================= -->
             @if($currentView === 'administrasi')
                 <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-                    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
                         <div>
                             <h2 class="text-base font-extrabold text-slate-900">Data Administrasi Pembayaran SPMB</h2>
                             <p class="text-xs text-slate-500">Pengecekan bukti dan status pelunasan pendaftaran</p>
                         </div>
+                        <a href="{{ route('panitia.administrasi.payment.exportExcel') }}" 
+                           class="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-xl font-bold text-emerald-800 text-xs transition flex items-center gap-1.5 shadow-2xs self-start sm:self-auto cursor-pointer" 
+                           title="Download Format Excel (.xlsx) Rapi & Resmi">
+                            <i class="fa-solid fa-file-excel text-emerald-600 text-sm"></i> Export Excel (.xlsx)
+                        </a>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -604,23 +769,66 @@
                             <thead>
                                 <tr class="bg-slate-50 border-y border-slate-200 font-extrabold uppercase text-[11px] text-slate-600">
                                     <th class="py-3 px-3">Invoice</th>
-                                    <th class="py-3 px-3">Calon Siswa</th>
-                                    <th class="py-3 px-3">Nominal</th>
+                                    <th class="py-3 px-3">No. Pendaftar</th>
+                                    <th class="py-3 px-3">Nama Calon Siswa</th>
+                                    <th class="py-3 px-3">Pilihan Jurusan</th>
+                                    <th class="py-3 px-3 text-right">Nominal</th>
                                     <th class="py-3 px-3">Metode</th>
-                                    <th class="py-3 px-3">Status</th>
+                                    <th class="py-3 px-3 text-center">Status</th>
+                                    <th class="py-3 px-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100 font-medium">
                                 @forelse($payments as $pay)
+                                    @php
+                                        $pReg = $pay->registration;
+                                        $pMajor = $pReg?->major;
+                                        $pUser = $pReg?->user;
+                                    @endphp
                                     <tr class="hover:bg-slate-50">
                                         <td class="py-3 px-3 font-mono font-bold text-blue-600">{{ $pay->invoice_number }}</td>
-                                        <td class="py-3 px-3 font-bold">{{ $pay->registration->user->name ?? '-' }}</td>
-                                        <td class="py-3 px-3 font-bold">Rp {{ number_format($pay->amount, 0, ',', '.') }}</td>
-                                        <td class="py-3 px-3 uppercase">{{ $pay->payment_method }}</td>
-                                        <td class="py-3 px-3 font-bold text-emerald-600">{{ strtoupper($pay->status) }}</td>
+                                        <td class="py-3 px-3 font-mono font-bold text-slate-800">{{ $pReg->registration_number ?? '-' }}</td>
+                                        <!-- Nama Siswa (Kontak dan Asal SMP tidak ditampilkan) -->
+                                        <td class="py-3 px-3 font-bold text-slate-900 uppercase">{{ $pUser->name ?? '-' }}</td>
+                                        <td class="py-3 px-3">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <div>
+                                                    <span class="font-bold text-slate-800">{{ $pMajor->name ?? '-' }}</span>
+                                                    @if(!empty($pMajor->industry_class))
+                                                        <span class="block text-[10px] text-teal-700 font-bold">({{ $pMajor->industry_class }})</span>
+                                                    @endif
+                                                </div>
+                                                @if($pReg)
+                                                    <button type="button" 
+                                                            onclick="openPanitiaChangeMajorModal('{{ $pReg->id }}', '{{ addslashes($pUser->name ?? '') }}', '{{ $pReg->registration_number }}', '{{ $pReg->major_id }}', '{{ addslashes($pMajor->name ?? '') }}')"
+                                                            class="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 transition cursor-pointer">
+                                                        <i class="fa-solid fa-pen-to-square"></i> Ubah
+                                                    </button>
+                                                @endif
+                                            </div>
+                                        </td>
+                                        <td class="py-3 px-3 font-bold text-right text-emerald-700 font-mono">Rp {{ number_format($pay->amount, 0, ',', '.') }}</td>
+                                        <td class="py-3 px-3 uppercase text-slate-600 font-semibold">{{ $pay->payment_method }}</td>
+                                        <td class="py-3 px-3 text-center">
+                                            <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                                                {{ strtoupper($pay->status) }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-3 text-center">
+                                            @if($pReg)
+                                                <button type="button" 
+                                                        onclick="openPanitiaChangeMajorModal('{{ $pReg->id }}', '{{ addslashes($pUser->name ?? '') }}', '{{ $pReg->registration_number }}', '{{ $pReg->major_id }}', '{{ addslashes($pMajor->name ?? '') }}')"
+                                                        class="p-1.5 w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-bold text-xs inline-flex items-center justify-center transition cursor-pointer"
+                                                        title="Ubah Jurusan Calon Siswa Ini">
+                                                    <i class="fa-solid fa-graduation-cap"></i>
+                                                </button>
+                                            @else
+                                                <span class="text-slate-400">-</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="py-6 text-center text-slate-400">Belum ada transaksi pembayaran.</td></tr>
+                                    <tr><td colspan="8" class="py-6 text-center text-slate-400">Belum ada transaksi pembayaran.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -660,9 +868,14 @@
                     <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Catatan Panitia untuk Siswa</label>
                     <textarea name="verification_notes" id="modal-notes-p" rows="2" placeholder="Catatan keabsahan berkas..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs"></textarea>
                 </div>
-                <div class="flex justify-end gap-2 pt-2">
-                    <button type="button" onclick="document.getElementById('modal-verify-p').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg">Batal</button>
-                    <button type="submit" class="px-4 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white text-xs font-bold rounded-lg">Simpan</button>
+                <div class="flex items-center justify-between gap-2 pt-3 border-t border-slate-100">
+                    <a id="modal-print-card-btn-p" href="#" target="_blank" class="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-2xs">
+                        <i class="fa-solid fa-print text-slate-600"></i> Cetak Bukti
+                    </a>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="document.getElementById('modal-verify-p').classList.add('hidden')" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg hover:bg-slate-200 transition">Batal</button>
+                        <button type="submit" class="px-4 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white text-xs font-bold rounded-lg shadow transition">Simpan Verifikasi</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -707,8 +920,312 @@
             document.getElementById('modal-student-info-p').innerText = `${name} (${regNum})`;
             document.getElementById('modal-status-select-p').value = status;
             document.getElementById('modal-notes-p').value = notes || '';
+            const printBtn = document.getElementById('modal-print-card-btn-p');
+            if (printBtn) {
+                printBtn.href = `/panitia/spmb/calon-siswa/${id}/cetak-kartu`;
+            }
             document.getElementById('modal-verify-p').classList.remove('hidden');
         }
+
+        function openPanitiaChangeMajorModal(regId, studentName, regNumber, currentMajorId, currentMajorName) {
+            const modal = document.getElementById('modal-change-major-p');
+            const form = document.getElementById('form-change-major-p');
+            if (!modal || !form) return;
+
+            form.action = `/panitia/administrasi/pembayaran/${regId}/change-major`;
+            const regEl = document.getElementById('cmp-reg-number');
+            if (regEl) regEl.innerText = regNumber;
+            const nameEl = document.getElementById('cmp-student-name');
+            if (nameEl) nameEl.innerText = studentName;
+            const curEl = document.getElementById('cmp-current-major');
+            if (curEl) curEl.innerText = currentMajorName || '-';
+
+            const select = document.getElementById('cmp-select-major');
+            if (select) {
+                select.value = currentMajorId;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closePanitiaChangeMajorModal() {
+            const modal = document.getElementById('modal-change-major-p');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // ================= JAVASCRIPT FITUR EDIT DATA CALON SISWA PANITIA =================
+        function openEditStudentModal(id, name, username, phone, gender, school, majorId, status) {
+            document.getElementById('form-edit-student-action').action = `/panitia/spmb/calon-siswa/${id}/update`;
+            document.getElementById('edit-student-name').value = name;
+            document.getElementById('edit-student-username').value = username;
+            document.getElementById('edit-student-phone').value = phone;
+            document.getElementById('edit-student-password').value = '';
+            document.getElementById('edit-student-gender').value = gender;
+            document.getElementById('edit-student-school').value = school;
+            document.getElementById('edit-student-major').value = majorId;
+            if (document.getElementById('edit-student-status') && status) {
+                document.getElementById('edit-student-status').value = status;
+            }
+            document.getElementById('modal-edit-student').classList.remove('hidden');
+        }
+
+        function closeEditStudentModal() {
+            document.getElementById('modal-edit-student').classList.add('hidden');
+        }
+    </script>
+
+    <!-- ================= MODAL UBAH JURUSAN OLEH PANITIA ================= -->
+    <div id="modal-change-major-p" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs hidden">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 overflow-hidden transform transition-all">
+            <div class="bg-gradient-to-r from-blue-700 to-indigo-800 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black">Ubah Pilihan Jurusan Siswa</h3>
+                        <p class="text-[11px] text-blue-100">Panitia SPMB</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closePanitiaChangeMajorModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <form id="form-change-major-p" action="" method="POST" class="p-6 space-y-4">
+                @csrf
+                <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-semibold">No. Pendaftar:</span>
+                        <span id="cmp-reg-number" class="font-mono font-bold text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-semibold">Nama Siswa:</span>
+                        <span id="cmp-student-name" class="font-bold text-slate-900 uppercase"></span>
+                    </div>
+                    <div class="flex items-center justify-between pt-1.5 border-t border-slate-200">
+                        <span class="text-slate-500 font-semibold">Jurusan Saat Ini:</span>
+                        <span id="cmp-current-major" class="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-briefcase text-blue-600"></i> Pilih Jurusan Baru *
+                    </label>
+                    <select name="major_id" id="cmp-select-major" required 
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:border-blue-500 transition">
+                        <option value="" disabled>-- Pilih Salah Satu Jurusan --</option>
+                        @foreach($majors as $m)
+                            <option value="{{ $m->id }}">
+                                {{ $m->name }} {{ !empty($m->industry_class) ? ' (' . $m->industry_class . ')' : '' }} (Sisa Kuota: {{ $m->remaining_quota }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2">
+                    <button type="button" onclick="closePanitiaChangeMajorModal()" 
+                            class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md flex items-center gap-2 transition cursor-pointer">
+                        <i class="fa-solid fa-check"></i> Simpan Jurusan Baru
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ================= MODAL EDIT CALON SISWA OLEH PANITIA ================= -->
+    <div id="modal-edit-student" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
+                    <i class="fa-solid fa-pen-to-square text-[#00a65a]"></i>
+                    <h3>Edit Data Calon Siswa</h3>
+                </div>
+                <button type="button" onclick="closeEditStudentModal()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="form-edit-student-action" action="" method="POST" class="space-y-4 text-xs font-medium text-slate-700">
+                @csrf
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="font-bold text-slate-800">Nama Lengkap Siswa *</label>
+                        <input type="text" id="edit-student-name" name="nama_siswa" required 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-800">No. HP / WhatsApp Siswa *</label>
+                        <input type="text" id="edit-student-phone" name="phone" required 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-800">Username Akun</label>
+                        <input type="text" id="edit-student-username" name="username" 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-800">Password Baru (Opsional)</label>
+                        <input type="text" id="edit-student-password" name="password" placeholder="Kosongkan jika tak diubah" 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="font-bold text-slate-800">Jenis Kelamin *</label>
+                        <select id="edit-student-gender" name="gender" required 
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-bold">
+                            <option value="L">Laki-laki (L)</option>
+                            <option value="P">Perempuan (P)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="font-bold text-slate-800">Asal Sekolah (SMP/MTs) *</label>
+                        <input type="text" id="edit-student-school" name="asal_sekolah" required 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg uppercase focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                    </div>
+                    <div class="space-y-1 sm:col-span-2">
+                        <label class="font-bold text-slate-800">Kompetensi Keahlian (Pilihan Jurusan) *</label>
+                        <select id="edit-student-major" name="major_id" required 
+                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                            @foreach($majors as $m)
+                                <option value="{{ $m->id }}">{{ $m->name }} {{ !empty($m->industry_class) ? '('.$m->industry_class.')' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                    <button type="button" onclick="closeEditStudentModal()" 
+                            class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-bold text-slate-600 transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" 
+                            class="px-5 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-lg font-bold transition flex items-center gap-1.5 shadow cursor-pointer">
+                        <i class="fa-solid fa-save"></i> Perbarui Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- INISIALISASI GRAFIK CHART.JS (JURUSAN & ASAL SMP DENGAN NORMALISASI KOSAKATA) -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // 1. Grafik Pendaftar per Jurusan
+            const ctxMajor = document.getElementById('chartMajorPendaftarPanitia');
+            if (ctxMajor) {
+                const majorLabels = @json($chartMajorNames ?? []);
+                const majorCounts = @json($chartMajorCounts ?? []);
+                const colors = [
+                    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
+                ];
+
+                new Chart(ctxMajor, {
+                    type: 'doughnut',
+                    data: {
+                        labels: majorLabels,
+                        datasets: [{
+                            data: majorCounts,
+                            backgroundColor: colors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const value = context.raw || 0;
+                                        const pct = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return ` ${context.label}: ${value} Calon Siswa (${pct}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '62%'
+                    }
+                });
+            }
+
+            // 2. Grafik Pendaftar per Asal SMP/MTs (Normalisasi Kosakata)
+            const ctxSchool = document.getElementById('chartSchoolPendaftarPanitia');
+            if (ctxSchool) {
+                const schoolLabels = @json($chartSchoolNames ?? []);
+                const schoolCounts = @json($chartSchoolCounts ?? []);
+
+                new Chart(ctxSchool, {
+                    type: 'bar',
+                    data: {
+                        labels: schoolLabels,
+                        datasets: [{
+                            label: 'Jumlah Calon Siswa',
+                            data: schoolCounts,
+                            backgroundColor: 'rgba(0, 168, 132, 0.85)',
+                            hoverBackgroundColor: 'rgba(0, 143, 112, 1)',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                ticks: {
+                                    precision: 0,
+                                    font: {
+                                        size: 10,
+                                        family: 'Plus Jakarta Sans'
+                                    }
+                                },
+                                grid: {
+                                    color: '#f1f5f9'
+                                }
+                            },
+                            y: {
+                                ticks: {
+                                    font: {
+                                        size: 10,
+                                        family: 'Plus Jakarta Sans',
+                                        weight: '600'
+                                    },
+                                    color: '#1e293b'
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return ` Pendaftar: ${context.raw} calon siswa`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
     </script>
 
 </body>

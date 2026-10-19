@@ -14,11 +14,13 @@ use App\Models\StudentParent;
 use App\Models\StudentSchool;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\PaymentExportService;
 use App\Services\StudentExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class DashboardController extends Controller
 {
@@ -34,7 +36,11 @@ class DashboardController extends Controller
         $totalRegistrations = Registration::count();
         $acceptedCount = Registration::where('status', 'accepted')->count();
         $pendingTestCount = Registration::where('status', 'pending')->count();
-        $paidCount = Payment::where('status', 'confirmed')->orWhere('status', 'success')->count();
+        
+        // Jumlah siswa unik yang sudah bayar (bukan jumlah transaksi)
+        $paidCount = Registration::whereHas('payments', function ($q) {
+            $q->whereIn('status', ['confirmed', 'success']);
+        })->count();
 
         $verifiedCount = Registration::where('status', 'verified')->count();
         $rejectedCount = Registration::where('status', 'rejected')->count();
@@ -45,8 +51,30 @@ class DashboardController extends Controller
             return $major;
         });
 
+        // Data Grafik Pendaftar per Jurusan
+        $chartMajorNames = $majors->pluck('name')->toArray();
+        $chartMajorAliases = $majors->map(fn($m) => $m->alias ?: $m->name)->toArray();
+        $chartMajorCounts = $majors->pluck('registrations_count')->toArray();
+        $chartMajorQuotas = $majors->pluck('quota')->toArray();
+
+        // Data Grafik Asal Sekolah SMP (dengan normalisasi kosakata ke 1 default standar)
+        $schoolRegistrations = StudentSchool::whereNotNull('asal_sekolah')
+            ->where('asal_sekolah', '!=', '')
+            ->where('asal_sekolah', '!=', '-')
+            ->get();
+
+        $schoolGroups = $schoolRegistrations->map(function ($s) {
+            return StudentSchool::normalizeSchoolName($s->asal_sekolah);
+        })->filter(function ($name) {
+            return $name !== 'TIDAK DIKETAHUI';
+        })->countBy()->sortDesc();
+
+        $chartSchoolNames = $schoolGroups->keys()->toArray();
+        $chartSchoolCounts = $schoolGroups->values()->toArray();
+        $totalUniqueSchools = $schoolGroups->count();
+
         // 3. Query Pendaftar dengan Filter & Pencarian
-        $query = Registration::with(['user', 'major', 'biodata', 'school', 'documents', 'verifier'])
+        $query = Registration::with(['user', 'major', 'secondChoiceMajor', 'biodata', 'school', 'parent', 'documents', 'verifier'])
             ->latest();
 
         if ($request->filled('status')) {
@@ -73,8 +101,8 @@ class DashboardController extends Controller
         $allCalonSiswa = (clone $query)->get();
         $registrations = $query->paginate(10)->withQueryString();
 
-        // 4. Data Pengguna Staf (Panitia PPDB & Administrator) untuk Halaman Data Pengguna
-        $staffUsers = User::whereIn('role', ['admin', 'panitia'])->latest()->get();
+        // 4. Data Pengguna Staf (Panitia PPDB, Bendahara SPMB & Administrator) untuk Halaman Data Pengguna
+        $staffUsers = User::whereIn('role', ['admin', 'panitia', 'bendahara'])->latest()->get();
 
         // 5. Data Pembayaran Administrasi (Dengan Logika Grouping Global Siswa & Multi-Transaksi)
         $allPayments = Payment::with(['registration.user', 'registration.major', 'confirmedBy'])
@@ -169,6 +197,13 @@ class DashboardController extends Controller
             'totalPengeluaran',
             'saldoKas',
             'settings',
+            'chartMajorNames',
+            'chartMajorAliases',
+            'chartMajorCounts',
+            'chartMajorQuotas',
+            'chartSchoolNames',
+            'chartSchoolCounts',
+            'totalUniqueSchools',
             'currentView',
             'profileTab'
         ));
@@ -299,7 +334,7 @@ class DashboardController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:100|unique:petugas,username',
             'password' => 'required|string|min:4',
-            'role' => 'required|string|in:panitia,admin',
+            'role' => 'required|string|in:panitia,admin,bendahara',
         ]);
 
         $email = $validated['username'] . '@smkknbi.sch.id';
@@ -317,8 +352,12 @@ class DashboardController extends Controller
             'is_active' => true,
         ]);
 
-        $roleLabel = $validated['role'] === 'admin' ? 'Administrator' : 'Panitia SPMB';
-        return back()->with('success', "Akun {$roleLabel} '{$validated['name']}' ({$validated['username']}) berhasil dibuat! Akun siap digunakan untuk login Panitia SPMB.");
+        $roleLabel = match ($validated['role']) {
+            'admin' => 'Administrator',
+            'bendahara' => 'Bendahara SPMB',
+            default => 'Panitia SPMB',
+        };
+        return back()->with('success', "Akun {$roleLabel} '{$validated['name']}' ({$validated['username']}) berhasil dibuat! Akun siap digunakan untuk login ke portal resmi SPMB.");
     }
 
     /**
@@ -332,7 +371,7 @@ class DashboardController extends Controller
             'name' => 'required|string|max:255',
             'username' => 'required|string|max:100|unique:petugas,username,' . $user->id,
             'password' => 'nullable|string|min:4',
-            'role' => 'required|string|in:panitia,admin',
+            'role' => 'required|string|in:panitia,admin,bendahara',
         ]);
 
         $updateData = [
@@ -433,10 +472,12 @@ class DashboardController extends Controller
             'school_email' => 'nullable|string|max:100',
             'school_website' => 'nullable|string|max:100',
             
-            // Hotline Panitia
+            // Hotline Panitia & Pesan Otomatis WhatsApp
             'hotline_panitia' => 'nullable|string|max:50',
             'hotline_panitia_name' => 'nullable|string|max:100',
             'hotline_panitia_hours' => 'nullable|string|max:100',
+            'wa_message_template' => 'nullable|string',
+            'wa_hotline_template' => 'nullable|string',
             
             // TTD & Ketua Panitia
             'chairman_name' => 'nullable|string|max:255',
@@ -469,6 +510,8 @@ class DashboardController extends Controller
             'hotline_panitia' => 'committee',
             'hotline_panitia_name' => 'committee',
             'hotline_panitia_hours' => 'committee',
+            'wa_message_template' => 'whatsapp',
+            'wa_hotline_template' => 'whatsapp',
             
             'chairman_name' => 'committee',
             'chairman_nip' => 'committee',
@@ -485,52 +528,58 @@ class DashboardController extends Controller
             }
         }
 
-        // 2. Upload / Hapus File Logo Sekolah
+        // 2. Upload / Hapus File Logo Sekolah (Tersimpan di storage/app/public/uploads/logo)
         if ($request->boolean('delete_logo') || $request->filled('remove_logo')) {
             $oldLogo = SystemSetting::where('key', 'school_logo')->value('value');
-            if ($oldLogo && File::exists(public_path($oldLogo))) {
-                File::delete(public_path($oldLogo));
+            if ($oldLogo) {
+                $storageRelative = preg_replace('#^storage/#', '', $oldLogo);
+                Storage::disk('public')->delete($storageRelative);
+                if (File::exists(public_path($oldLogo))) {
+                    File::delete(public_path($oldLogo));
+                }
             }
             SystemSetting::set('school_logo', null, 'branding');
         } elseif ($request->hasFile('school_logo')) {
-            $dir = public_path('uploads/logo');
-            File::ensureDirectoryExists($dir);
             $file = $request->file('school_logo');
             $filename = 'logo_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($dir, $filename);
-            SystemSetting::set('school_logo', 'uploads/logo/' . $filename, 'branding', 'file', 'Logo Sekolah');
+            $path = $file->storeAs('uploads/logo', $filename, 'public');
+            SystemSetting::set('school_logo', 'storage/' . $path, 'branding', 'file', 'Logo Sekolah');
         }
 
-        // 3. Upload / Hapus File TTD Ketua Panitia Digital (PNG Transparan)
+        // 3. Upload / Hapus File TTD Ketua Panitia Digital (Tersimpan di storage/app/public/uploads/signatures)
         if ($request->boolean('delete_signature') || $request->filled('remove_signature')) {
             $oldSig = SystemSetting::where('key', 'chairman_signature')->value('value');
-            if ($oldSig && File::exists(public_path($oldSig))) {
-                File::delete(public_path($oldSig));
+            if ($oldSig) {
+                $storageRelative = preg_replace('#^storage/#', '', $oldSig);
+                Storage::disk('public')->delete($storageRelative);
+                if (File::exists(public_path($oldSig))) {
+                    File::delete(public_path($oldSig));
+                }
             }
             SystemSetting::set('chairman_signature', null, 'committee');
         } elseif ($request->hasFile('chairman_signature')) {
-            $dir = public_path('uploads/signatures');
-            File::ensureDirectoryExists($dir);
             $file = $request->file('chairman_signature');
             $filename = 'ttd_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($dir, $filename);
-            SystemSetting::set('chairman_signature', 'uploads/signatures/' . $filename, 'committee', 'file', 'TTD Ketua Panitia');
+            $path = $file->storeAs('uploads/signatures', $filename, 'public');
+            SystemSetting::set('chairman_signature', 'storage/' . $path, 'committee', 'file', 'TTD Ketua Panitia');
         }
 
-        // 4. Upload / Hapus File Banner Kop Surat Jadi (Opsional)
+        // 4. Upload / Hapus File Banner Kop Surat Jadi (Tersimpan di storage/app/public/uploads/kop)
         if ($request->boolean('delete_cop_banner') || $request->filled('remove_cop_banner')) {
             $oldBanner = SystemSetting::where('key', 'cop_image_banner')->value('value');
-            if ($oldBanner && File::exists(public_path($oldBanner))) {
-                File::delete(public_path($oldBanner));
+            if ($oldBanner) {
+                $storageRelative = preg_replace('#^storage/#', '', $oldBanner);
+                Storage::disk('public')->delete($storageRelative);
+                if (File::exists(public_path($oldBanner))) {
+                    File::delete(public_path($oldBanner));
+                }
             }
             SystemSetting::set('cop_image_banner', null, 'cop_surat');
         } elseif ($request->hasFile('cop_image_banner')) {
-            $dir = public_path('uploads/kop');
-            File::ensureDirectoryExists($dir);
             $file = $request->file('cop_image_banner');
             $filename = 'kop_' . time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-            $file->move($dir, $filename);
-            SystemSetting::set('cop_image_banner', 'uploads/kop/' . $filename, 'cop_surat', 'file', 'Banner Kop Surat Jadi');
+            $path = $file->storeAs('uploads/kop', $filename, 'public');
+            SystemSetting::set('cop_image_banner', 'storage/' . $path, 'cop_surat', 'file', 'Banner Kop Surat Jadi');
         }
 
         return redirect()->route('admin.dashboard', ['view' => 'pengaturan'])
@@ -852,14 +901,15 @@ class DashboardController extends Controller
     }
 
     /**
-     * Update Data Calon Siswa dari Modal Edit.
+     * Update Data Calon Siswa dari Modal Edit (Mendukung Edit Penuh Admin & Cepat Panitia).
      */
     public function updateStudentManual(Request $request, $id)
     {
-        $registration = Registration::with(['user', 'biodata', 'school'])->findOrFail($id);
+        $registration = Registration::with(['user', 'biodata', 'school', 'parent'])->findOrFail($id);
         $userId = $registration->user_id;
 
         $validated = $request->validate([
+            // Standard / Quick Edit Fields
             'nama_siswa' => 'required|string|max:255',
             'username' => 'nullable|string|max:100|unique:siswa,username,' . $userId,
             'password' => 'nullable|string|min:4',
@@ -868,6 +918,68 @@ class DashboardController extends Controller
             'asal_sekolah' => 'required|string|max:255',
             'major_id' => 'required|exists:jurusan,id',
             'status' => 'nullable|in:pending,verified,accepted,rejected',
+
+            // Full Edit Fields (Nullable)
+            // Akun & Pendaftaran
+            'nisn' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:100',
+            'major_choice_2_id' => 'nullable|exists:jurusan,id',
+            'registration_type' => 'nullable|string|max:50',
+            'recommendation_by' => 'nullable|string|max:255',
+
+            // Biodata Siswa
+            'nik' => 'nullable|string|max:25',
+            'no_kk' => 'nullable|string|max:25',
+            'tempat_lahir' => 'nullable|string|max:100',
+            'tanggal_lahir' => 'nullable|date',
+            'agama' => 'nullable|string|max:50',
+            'anak_ke' => 'nullable|integer|min:1|max:30',
+            'jumlah_saudara' => 'nullable|integer|min:0|max:30',
+            'tinggi_badan' => 'nullable|integer|min:30|max:250',
+            'berat_badan' => 'nullable|integer|min:10|max:250',
+            'riwayat_penyakit' => 'nullable|string|max:255',
+
+            // Alamat Siswa
+            'alamat_jalan' => 'nullable|string|max:255',
+            'desa' => 'nullable|string|max:100',
+            'kecamatan' => 'nullable|string|max:100',
+            'kabupaten' => 'nullable|string|max:100',
+            'provinsi' => 'nullable|string|max:100',
+            'kode_pos' => 'nullable|string|max:10',
+
+            // Asal Sekolah
+            'npsn_sekolah' => 'nullable|string|max:20',
+            'jenis_sekolah' => 'nullable|string|max:50',
+            'status_sekolah' => 'nullable|string|max:50',
+            'kabupaten_sekolah' => 'nullable|string|max:100',
+            'tahun_lulus' => 'nullable|string|max:10',
+            'no_ijazah' => 'nullable|string|max:100',
+            'nilai_rata_raport' => 'nullable|numeric|between:0,100',
+
+            // Orang Tua: Ayah
+            'nama_ayah' => 'nullable|string|max:255',
+            'status_ayah' => 'nullable|string|max:50',
+            'nik_ayah' => 'nullable|string|max:25',
+            'pekerjaan_ayah' => 'nullable|string|max:100',
+            'pendidikan_ayah' => 'nullable|string|max:50',
+            'penghasilan_ayah' => 'nullable|string|max:100',
+            'no_hp_ayah' => 'nullable|string|max:25',
+
+            // Orang Tua: Ibu
+            'nama_ibu' => 'nullable|string|max:255',
+            'status_ibu' => 'nullable|string|max:50',
+            'nik_ibu' => 'nullable|string|max:25',
+            'pekerjaan_ibu' => 'nullable|string|max:100',
+            'pendidikan_ibu' => 'nullable|string|max:50',
+            'penghasilan_ibu' => 'nullable|string|max:100',
+            'no_hp_ibu' => 'nullable|string|max:25',
+
+            // Wali Siswa
+            'nama_wali' => 'nullable|string|max:255',
+            'hubungan_wali' => 'nullable|string|max:100',
+            'pekerjaan_wali' => 'nullable|string|max:100',
+            'no_hp_wali' => 'nullable|string|max:25',
+            'alamat_wali' => 'nullable|string|max:255',
         ], [
             'username.unique' => 'Username ":input" sudah digunakan oleh siswa lain.',
             'phone.unique' => 'Nomor HP ":input" sudah terdaftar pada akun lain.',
@@ -875,11 +987,21 @@ class DashboardController extends Controller
 
         DB::beginTransaction();
         try {
+            // 1. Update Akun Siswa (User / Siswa)
             $userData = [
                 'name' => $validated['nama_siswa'],
-                'username' => $validated['username'] ?: $registration->user?->username,
                 'phone' => $validated['phone'],
             ];
+
+            if ($request->has('username')) {
+                $userData['username'] = $validated['username'] ?: $registration->user?->username;
+            }
+            if ($request->has('nisn')) {
+                $userData['nisn'] = $validated['nisn'] ?: null;
+            }
+            if ($request->has('email')) {
+                $userData['email'] = $validated['email'] ?: null;
+            }
 
             if ($request->filled('password')) {
                 $userData['password'] = Hash::make($validated['password']);
@@ -888,23 +1010,86 @@ class DashboardController extends Controller
 
             $registration->user?->update($userData);
 
-            $regData = [
-                'major_id' => $validated['major_id'],
-            ];
-            if (!empty($validated['status'])) {
-                $regData['status'] = $validated['status'];
+            // 2. Update Data Registrasi & Jurusan
+            if ($registration->major_id != $validated['major_id']) {
+                $newMajor = Major::findOrFail($validated['major_id']);
+                $registration->updateMajorWithNumberChange($newMajor);
             }
-            $registration->update($regData);
 
-            $registration->biodata?->update([
+            $regUpdate = [];
+            if (!empty($validated['status'])) {
+                $regUpdate['status'] = $validated['status'];
+            }
+            if ($request->has('major_choice_2_id')) {
+                $regUpdate['major_choice_2_id'] = $validated['major_choice_2_id'] ?: null;
+            }
+            if ($request->has('registration_type')) {
+                $regUpdate['registration_type'] = $validated['registration_type'] ?: 'reguler';
+            }
+            if ($request->has('recommendation_by')) {
+                $regUpdate['recommendation_by'] = $validated['recommendation_by'] ?: null;
+            }
+            if (!empty($regUpdate)) {
+                $registration->update($regUpdate);
+            }
+
+            // 3. Update / Create Biodata Siswa
+            $bioData = [
                 'nama_lengkap' => $validated['nama_siswa'],
                 'jenis_kelamin' => $validated['gender'],
                 'no_hp' => $validated['phone'],
-            ]);
+            ];
+            $bioFields = [
+                'nik', 'no_kk', 'agama', 'tempat_lahir', 'tanggal_lahir', 'email',
+                'alamat_jalan', 'desa', 'kecamatan', 'kabupaten', 'provinsi', 'kode_pos',
+                'anak_ke', 'jumlah_saudara', 'tinggi_badan', 'berat_badan', 'riwayat_penyakit'
+            ];
+            foreach ($bioFields as $bf) {
+                if ($request->has($bf)) {
+                    $bioData[$bf] = ($validated[$bf] ?? null) !== '' ? ($validated[$bf] ?? null) : null;
+                }
+            }
+            StudentBiodata::updateOrCreate(
+                ['registration_id' => $registration->id],
+                $bioData
+            );
 
-            $registration->school?->update([
+            // 4. Update / Create Asal Sekolah
+            $schoolData = [
                 'asal_sekolah' => $validated['asal_sekolah'],
-            ]);
+            ];
+            $schoolFields = [
+                'npsn_sekolah', 'jenis_sekolah', 'status_sekolah', 'kabupaten_sekolah',
+                'tahun_lulus', 'no_ijazah', 'nilai_rata_raport'
+            ];
+            foreach ($schoolFields as $sf) {
+                if ($request->has($sf)) {
+                    $schoolData[$sf] = ($validated[$sf] ?? null) !== '' ? ($validated[$sf] ?? null) : null;
+                }
+            }
+            StudentSchool::updateOrCreate(
+                ['registration_id' => $registration->id],
+                $schoolData
+            );
+
+            // 5. Update / Create Data Orang Tua & Wali
+            $parentFields = [
+                'nama_ayah', 'status_ayah', 'nik_ayah', 'pekerjaan_ayah', 'pendidikan_ayah', 'penghasilan_ayah', 'no_hp_ayah',
+                'nama_ibu', 'status_ibu', 'nik_ibu', 'pekerjaan_ibu', 'pendidikan_ibu', 'penghasilan_ibu', 'no_hp_ibu',
+                'nama_wali', 'hubungan_wali', 'pekerjaan_wali', 'no_hp_wali', 'alamat_wali'
+            ];
+            $parentData = [];
+            foreach ($parentFields as $pf) {
+                if ($request->has($pf)) {
+                    $parentData[$pf] = ($validated[$pf] ?? null) !== '' ? ($validated[$pf] ?? null) : null;
+                }
+            }
+            if (!empty($parentData)) {
+                StudentParent::updateOrCreate(
+                    ['registration_id' => $registration->id],
+                    $parentData
+                );
+            }
 
             DB::commit();
 
@@ -1038,6 +1223,40 @@ class DashboardController extends Controller
         $settings = SystemSetting::pluck('value', 'key');
 
         return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
+    }
+
+    /**
+     * Export Excel data administrasi pembayaran kasir / bendahara SPMB.
+     */
+    public function exportPaymentsExcel(Request $request, PaymentExportService $exportService)
+    {
+        return $exportService->exportExcel($request->get('search'));
+    }
+
+    /**
+     * Ubah khusus jurusan calon siswa dari bagian administrasi pembayaran SPMB.
+     * Otomatis memperbarui nomor pendaftaran (registration_number) sesuai kode jurusan baru.
+     */
+    public function updateStudentMajor(Request $request, int $registrationId)
+    {
+        $validated = $request->validate([
+            'major_id' => 'required|exists:jurusan,id',
+        ]);
+
+        $registration = Registration::with(['user', 'major', 'documents'])->findOrFail($registrationId);
+        $newMajor = Major::findOrFail($validated['major_id']);
+        $oldNumber = $registration->registration_number;
+
+        $newNumber = $registration->updateMajorWithNumberChange($newMajor);
+
+        $studentName = $registration->user->name ?? 'Calon Siswa';
+        $industryInfo = !empty($newMajor->industry_class) ? " ({$newMajor->industry_class})" : '';
+
+        $numberChangeInfo = ($oldNumber !== $newNumber)
+            ? ", dan nomor pendaftaran otomatis diperbarui dari {$oldNumber} menjadi {$newNumber}"
+            : "";
+
+        return back()->with('success', "Pilihan jurusan calon siswa {$studentName} berhasil diperbarui menjadi {$newMajor->name}{$industryInfo}{$numberChangeInfo}!");
     }
 
     /**

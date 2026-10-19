@@ -35,4 +35,33 @@ class StudentSchool extends Model
     {
         return $this->belongsTo(Registration::class);
     }
+
+    /**
+     * Normalisasi nama asal sekolah (SMP / MTs) ke satu kosakata default standar
+     * Contoh: "SMP N 1 Boyolali", "SMPN 1 BOYOLALI", "SMP 1 Boyolali" => "SMP NEGERI 1 BOYOLALI"
+     */
+    public static function normalizeSchoolName(?string $name): string
+    {
+        if (empty($name) || trim($name) === '-' || trim($name) === '') {
+            return 'TIDAK DIKETAHUI';
+        }
+
+        $name = strtoupper(trim($name));
+        // Bersihkan tanda titik, koma, strip dekoratif
+        $name = str_replace(['.', ',', '-'], ' ', $name);
+        // Rapikan spasi ganda
+        $name = preg_replace('/\s+/', ' ', $name);
+
+        // Standarisasi variasi SMP Negeri
+        $name = preg_replace('/^SMP\s*(?:N(?:EGERI)?|N)?\s*(\d+)/i', 'SMP NEGERI $1', $name);
+        $name = preg_replace('/^SMPN\s*(\d+)/i', 'SMP NEGERI $1', $name);
+        $name = preg_replace('/^SMP\s+N\s+/i', 'SMP NEGERI ', $name);
+
+        // Standarisasi variasi MTs Negeri
+        $name = preg_replace('/^MTS\s*(?:N(?:EGERI)?|N)?\s*(\d+)/i', 'MTS NEGERI $1', $name);
+        $name = preg_replace('/^MTSN\s*(\d+)/i', 'MTS NEGERI $1', $name);
+        $name = preg_replace('/^MTS\s+N\s+/i', 'MTS NEGERI ', $name);
+
+        return trim($name);
+    }
 }

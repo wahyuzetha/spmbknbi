@@ -57,16 +57,13 @@
                 @endif
             </div>
 
-            <!-- TABS PILIHAN ROLE -->
+            <!-- TABS PILIHAN ROLE (2 PORTAL: CALON SISWA & PANITIA SPMB) -->
             <div class="flex items-center p-1 bg-slate-100 rounded-xl mb-5 text-xs font-bold">
-                <button type="button" onclick="setLoginType('murid')" id="tab-type-murid" class="flex-1 py-1.5 rounded-lg bg-white text-blue-700 shadow transition">
-                    Calon Siswa
+                <button type="button" onclick="setLoginType('murid')" id="tab-type-murid" class="flex-1 py-2 rounded-lg bg-white text-blue-700 shadow transition text-center">
+                    <i class="fa-solid fa-user-graduate mr-1"></i> Calon Siswa
                 </button>
-                <button type="button" onclick="setLoginType('panitia')" id="tab-type-panitia" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
-                    Panitia SPMB
-                </button>
-                <button type="button" onclick="setLoginType('admin')" id="tab-type-admin" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
-                    Administrator
+                <button type="button" onclick="setLoginType('panitia')" id="tab-type-panitia" class="flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition text-center">
+                    <i class="fa-solid fa-users-gear mr-1"></i> Panitia SPMB
                 </button>
             </div>
 
@@ -87,13 +84,13 @@
                 </div>
             @endif
 
-            <!-- NOTIFIKASI KHUSUS PANITIA SPMB -->
+            <!-- NOTIFIKASI KHUSUS PANITIA / PETUGAS SPMB -->
             <div id="panitia-account-info" class="hidden mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
                 <div class="flex items-start gap-2">
                     <i class="fa-solid fa-circle-info text-amber-600 mt-0.5 text-sm"></i>
                     <div>
-                        <span class="font-bold">Ketentuan Login Panitia:</span>
-                        <p class="text-[11px] text-amber-800 mt-0.5">Akun Panitia SPMB tidak dapat mendaftar sendiri. Login hanya dapat dilakukan menggunakan Akun (Username & Password) resmi yang telah dibuat dan diberikan oleh <strong>Administrator</strong> di menu Data Pengguna.</p>
+                        <span class="font-bold">Ketentuan Login Petugas:</span>
+                        <p class="text-[11px] text-amber-800 mt-0.5">Portal ini digunakan untuk login petugas <strong>Panitia</strong>, <strong>Bendahara</strong>, dan <strong>Administrator</strong> SPMB menggunakan akun resmi yang telah didaftarkan.</p>
                     </div>
                 </div>
             </div>
@@ -123,17 +120,6 @@
                         </span>
                         <input type="password" name="password" id="input-login-pwd" placeholder="Masukkan kata sandi" required
                                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
-                    </div>
-                </div>
-
-                <!-- AKUN DEMO HELPER -->
-                <div id="login-demo-helper" class="hidden p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
-                    <span class="font-bold text-slate-700">Akun Percobaan (Demo):</span>
-                    <div class="flex items-center justify-between mt-1">
-                        <code id="login-demo-code" class="text-blue-600 font-mono font-bold text-[10px]"></code>
-                        <button type="button" onclick="autofillLoginDemo()" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] hover:bg-blue-700">
-                            Isi Otomatis
-                        </button>
                     </div>
                 </div>
 
@@ -168,54 +154,25 @@
             selectedLoginType = type;
             const tabMurid = document.getElementById('tab-type-murid');
             const tabPanitia = document.getElementById('tab-type-panitia');
-            const tabAdmin = document.getElementById('tab-type-admin');
             const labelIdentity = document.getElementById('label-login-identity');
             const inputIdentity = document.getElementById('input-login-identity');
-            const demoHelper = document.getElementById('login-demo-helper');
-            const demoCode = document.getElementById('login-demo-code');
             const title = document.getElementById('login-title');
-
             const panitiaInfo = document.getElementById('panitia-account-info');
 
-            [tabMurid, tabPanitia, tabAdmin].forEach(t => {
-                t.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
-            });
-
-            if (type === 'admin') {
-                tabAdmin.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-700 shadow transition';
-                title.innerText = 'Login Administrator';
-                labelIdentity.innerText = 'Username / Email Administrator *';
-                inputIdentity.placeholder = 'admin / admin@smkknbi.sch.id';
-                demoHelper.classList.remove('hidden');
-                demoCode.innerText = 'admin / password';
-                if (panitiaInfo) panitiaInfo.classList.add('hidden');
-            } else if (type === 'panitia') {
-                tabPanitia.className = 'flex-1 py-1.5 rounded-lg bg-white text-indigo-700 shadow transition';
-                title.innerText = 'Login Panitia SPMB';
-                labelIdentity.innerText = 'Username / Email Panitia *';
-                inputIdentity.placeholder = 'smkknbi / kssmkknbi / panitia@smkknbi.sch.id';
-                demoHelper.classList.remove('hidden');
-                demoCode.innerText = 'smkknbi / password';
+            if (type === 'panitia') {
+                tabMurid.className = 'flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition text-center';
+                tabPanitia.className = 'flex-1 py-2 rounded-lg bg-white text-indigo-700 shadow transition text-center';
+                title.innerText = 'Portal Panitia SPMB';
+                labelIdentity.innerText = 'Username / Email Petugas *';
+                inputIdentity.placeholder = 'Masukkan username atau email petugas';
                 if (panitiaInfo) panitiaInfo.classList.remove('hidden');
             } else {
-                tabMurid.className = 'flex-1 py-1.5 rounded-lg bg-white text-blue-700 shadow transition';
+                tabPanitia.className = 'flex-1 py-2 rounded-lg text-slate-600 hover:text-slate-900 transition text-center';
+                tabMurid.className = 'flex-1 py-2 rounded-lg bg-white text-blue-700 shadow transition text-center';
                 title.innerText = 'Portal Masuk Siswa';
                 labelIdentity.innerText = 'Username / No. HP / NISN *';
                 inputIdentity.placeholder = 'Contoh: 085861512412 / NISN';
-                demoHelper.classList.add('hidden');
                 if (panitiaInfo) panitiaInfo.classList.add('hidden');
-            }
-        }
-
-        function autofillLoginDemo() {
-            const inputIdentity = document.getElementById('input-login-identity');
-            const inputPwd = document.getElementById('input-login-pwd');
-            if (selectedLoginType === 'admin') {
-                inputIdentity.value = 'admin';
-                inputPwd.value = 'password';
-            } else if (selectedLoginType === 'panitia') {
-                inputIdentity.value = 'smkknbi';
-                inputPwd.value = 'password';
             }
         }
     </script>

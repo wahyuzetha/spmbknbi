@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\AcademicYear;
 use App\Models\Expense;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\Siswa;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class CalonSiswaFeatureTest extends TestCase
@@ -509,7 +511,7 @@ class CalonSiswaFeatureTest extends TestCase
         $adminView->assertSee('TOTAL KAS MASUK (PEMASUKAN)');
         $adminView->assertSee('TOTAL PENGELUARAN KAS');
         $adminView->assertSee('SISA SALDO KAS (SELISIH)');
-        $adminView->assertSee('Menampilkan 10 Data Pertama');
+        $adminView->assertSee('Menampilkan Semua Data');
         $adminView->assertSee('Keterangan (Opsional)');
 
         // 2. Akses View Pengeluaran Kas SPMB
@@ -606,6 +608,226 @@ class CalonSiswaFeatureTest extends TestCase
 
         $this->assertDatabaseMissing('pengeluaran', ['id' => $expense->id]);
     }
+
+    /**
+     * Test Role Admin dapat mengedit data calon siswa secara full (biodata, orang tua, sekolah, akun).
+     */
+    public function test_admin_dapat_mengedit_data_siswa_secara_full(): void
+    {
+        $admin = User::firstOrCreate(
+            ['email' => 'admin_test_full@smkknbi.sch.id'],
+            [
+                'name' => 'Admin Full Edit Test',
+                'username' => 'adm_full',
+                'phone' => '081299990001',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'is_active' => true,
+            ]
+        );
+
+        $majors = Major::take(2)->get();
+        $major1 = $majors[0];
+        $major2 = $majors[1] ?? $majors[0];
+
+        $siswa = Siswa::create([
+            'name' => 'Siswa Belum Edit',
+            'username' => 'siswa_edit_full_test',
+            'phone' => '087700001111',
+            'email' => 'siswa_edit_full_test@siswa.smkknbi.sch.id',
+            'password' => Hash::make('12345'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+
+        $ay = AcademicYear::where('is_active', true)->first() ?? AcademicYear::first();
+        $reg = Registration::create([
+            'registration_number' => 'REG-FULL-001',
+            'user_id' => $siswa->id,
+            'academic_year_id' => $ay->id,
+            'major_id' => $major1->id,
+            'registration_type' => 'reguler',
+            'status' => 'pending',
+        ]);
+
+        $fullPayload = [
+            // Akun & Pendaftaran
+            'nama_siswa' => 'Budi Santoso Putra Pratama',
+            'phone' => '087700001111',
+            'username' => 'budisantoso99',
+            'nisn' => '0098765432',
+            'email' => 'budi.santoso@gmail.com',
+            'gender' => 'L',
+            'major_id' => $major1->id,
+            'major_choice_2_id' => $major2->id,
+            'registration_type' => 'prestasi',
+            'recommendation_by' => 'Drs. H. Mulyadi',
+            'status' => 'verified',
+
+            // Biodata & Alamat
+            'nik' => '3309012345678901',
+            'no_kk' => '3309012345678902',
+            'tempat_lahir' => 'Boyolali',
+            'tanggal_lahir' => '2008-05-15',
+            'agama' => 'Islam',
+            'anak_ke' => 2,
+            'jumlah_saudara' => 3,
+            'tinggi_badan' => 168,
+            'berat_badan' => 55,
+            'riwayat_penyakit' => 'Tidak Ada',
+            'alamat_jalan' => 'Jl. Pandanaran No. 45 RT 03 / RW 05',
+            'desa' => 'Siswodipuran',
+            'kecamatan' => 'Boyolali',
+            'kabupaten' => 'Boyolali',
+            'provinsi' => 'Jawa Tengah',
+            'kode_pos' => '57311',
+
+            // Asal Sekolah
+            'asal_sekolah' => 'SMP Negeri 1 Boyolali',
+            'npsn_sekolah' => '20307777',
+            'jenis_sekolah' => 'SMP',
+            'status_sekolah' => 'Negeri',
+            'kabupaten_sekolah' => 'Boyolali',
+            'tahun_lulus' => '2026',
+            'no_ijazah' => 'DN-03/D-SMP/26/0012345',
+            'nilai_rata_raport' => 88.75,
+
+            // Orang Tua & Wali
+            'nama_ayah' => 'Santoso Wijaya',
+            'status_ayah' => 'Masih Hidup',
+            'nik_ayah' => '3309011111111111',
+            'pekerjaan_ayah' => 'Wiraswasta',
+            'pendidikan_ayah' => 'S1',
+            'penghasilan_ayah' => 'Rp 5.000.000 - Rp 10.000.000',
+            'no_hp_ayah' => '081234567890',
+            'nama_ibu' => 'Siti Aminah',
+            'status_ibu' => 'Masih Hidup',
+            'nik_ibu' => '3309012222222222',
+            'pekerjaan_ibu' => 'Guru',
+            'pendidikan_ibu' => 'S1',
+            'penghasilan_ibu' => 'Rp 3.000.000 - Rp 5.000.000',
+            'no_hp_ibu' => '081234567891',
+            'nama_wali' => 'Bambang Supriyanto',
+            'hubungan_wali' => 'Paman',
+            'pekerjaan_wali' => 'PNS',
+            'no_hp_wali' => '081234567892',
+            'alamat_wali' => 'Solo Baru',
+        ];
+
+        $response = $this->actingAs($admin)->post("/admin/spmb/calon-siswa/{$reg->id}/update", $fullPayload);
+        $response->assertSessionHas('success');
+
+        // Verifikasi tabel siswa
+        $this->assertDatabaseHas('siswa', [
+            'id' => $siswa->id,
+            'name' => 'Budi Santoso Putra Pratama',
+            'username' => 'budisantoso99',
+            'nisn' => '0098765432',
+            'email' => 'budi.santoso@gmail.com',
+        ]);
+
+        // Verifikasi tabel pendaftaran
+        $this->assertDatabaseHas('pendaftaran', [
+            'id' => $reg->id,
+            'major_id' => $major1->id,
+            'major_choice_2_id' => $major2->id,
+            'registration_type' => 'prestasi',
+            'recommendation_by' => 'Drs. H. Mulyadi',
+            'status' => 'verified',
+        ]);
+
+        // Verifikasi tabel biodata_siswa
+        $this->assertDatabaseHas('biodata_siswa', [
+            'registration_id' => $reg->id,
+            'nik' => '3309012345678901',
+            'no_kk' => '3309012345678902',
+            'agama' => 'Islam',
+            'tempat_lahir' => 'Boyolali',
+            'anak_ke' => 2,
+            'desa' => 'Siswodipuran',
+        ]);
+
+        // Verifikasi tabel asal_sekolah_siswa
+        $this->assertDatabaseHas('asal_sekolah_siswa', [
+            'registration_id' => $reg->id,
+            'asal_sekolah' => 'SMP Negeri 1 Boyolali',
+            'npsn_sekolah' => '20307777',
+            'tahun_lulus' => '2026',
+        ]);
+
+        // Verifikasi tabel orang_tua_siswa
+        $this->assertDatabaseHas('orang_tua_siswa', [
+            'registration_id' => $reg->id,
+            'nama_ayah' => 'Santoso Wijaya',
+            'nama_ibu' => 'Siti Aminah',
+            'nama_wali' => 'Bambang Supriyanto',
+        ]);
+    }
+
+    /**
+     * Test Role Panitia dapat mengedit data siswa seperti role admin sebelumnya.
+     */
+    public function test_panitia_dapat_mengedit_data_siswa_seperti_role_admin_sebelumnya(): void
+    {
+        $panitia = User::firstOrCreate(
+            ['email' => 'panitia_edit_test@smkknbi.sch.id'],
+            [
+                'name' => 'Panitia SPMB Tester',
+                'username' => 'panitia_test_edit',
+                'phone' => '081399990002',
+                'password' => Hash::make('password'),
+                'role' => 'panitia',
+                'is_active' => true,
+            ]
+        );
+
+        $major = Major::first();
+        $siswa = Siswa::create([
+            'name' => 'Calon Siswa Panitia Edit',
+            'username' => 'siswa_panitia_test',
+            'phone' => '087711112222',
+            'email' => 'siswa_panitia_test@siswa.smkknbi.sch.id',
+            'password' => Hash::make('12345'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+
+        $ay = AcademicYear::where('is_active', true)->first() ?? AcademicYear::first();
+        $reg = Registration::create([
+            'registration_number' => 'REG-PAN-001',
+            'user_id' => $siswa->id,
+            'academic_year_id' => $ay->id,
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ]);
+
+        $panitiaPayload = [
+            'nama_siswa' => 'Ahmad Fauzi Panitia',
+            'phone' => '087711112222',
+            'username' => 'ahmadfauzi_panitia',
+            'password' => 'panitia123',
+            'gender' => 'L',
+            'asal_sekolah' => 'SMP Negeri 3 Boyolali',
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ];
+
+        $response = $this->actingAs($panitia)->post(route('panitia.spmb.student.update', $reg->id), $panitiaPayload);
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('siswa', [
+            'id' => $siswa->id,
+            'name' => 'Ahmad Fauzi Panitia',
+            'username' => 'ahmadfauzi_panitia',
+            'raw_password' => 'panitia123',
+        ]);
+
+        $this->assertDatabaseHas('asal_sekolah_siswa', [
+            'registration_id' => $reg->id,
+            'asal_sekolah' => 'SMP Negeri 3 Boyolali',
+        ]);
+    }
 }
+
 
 

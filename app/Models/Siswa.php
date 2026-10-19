@@ -55,6 +55,11 @@ class Siswa extends Authenticatable
         return false;
     }
 
+    public function isBendahara(): bool
+    {
+        return false;
+    }
+
     // Relationships
     public function registration(): HasOne
     {

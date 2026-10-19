@@ -204,9 +204,11 @@
                     @endif
                 </div>
                 <p class="font-bold uppercase text-slate-900 underline">
-                    {{ $settings['chairman_name'] ?? 'H. Bambang Wahyudi, S.Pd., M.Kom.' }}
+                    {{ $settings['chairman_name'] ?? 'Ketua Panitia SPMB' }}
                 </p>
-                <p class="text-[10px] text-slate-500 font-mono">NIP. {{ $settings['chairman_nip'] ?? '-' }}</p>
+                @if(!empty($settings['chairman_nip']))
+                    <p class="text-[10px] text-slate-500 font-mono">NIP. {{ $settings['chairman_nip'] }}</p>
+                @endif
             </div>
 
             <!-- KANAN: BENDAHARA SEKOLAH -->

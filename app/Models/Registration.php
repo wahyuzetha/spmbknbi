@@ -118,7 +118,7 @@ class Registration extends Model
      *
      * Contoh: 276012
      */
-    public static function generateNumber($major = null, ?int $studentId = null, $academicYear = null): string
+    public static function generateNumber($major = null, ?int $studentId = null, $academicYear = null, ?int $ignoreRegistrationId = null): string
     {
         // 1. Digit Tahun Pelajaran (2 digit)
         $yearDigits = static::getYearDigits($academicYear);
@@ -138,13 +138,78 @@ class Registration extends Model
         $regNumber = $yearDigits . $majorDigit . $seqDigits;
 
         // Pastikan unik jika nomor sudah ada sebelumnya
-        while (static::where('registration_number', $regNumber)->exists()) {
+        while (static::where('registration_number', $regNumber)
+            ->when($ignoreRegistrationId, fn($q) => $q->where('id', '!=', $ignoreRegistrationId))
+            ->exists()) {
             $seq++;
             $seqDigits = str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
             $regNumber = $yearDigits . $majorDigit . $seqDigits;
         }
 
         return $regNumber;
+    }
+
+    /**
+     * Update jurusan pendaftaran dan otomatis perbarui nomor pendaftaran sesuai kode jurusan baru.
+     * Serta memindahkan berkas dokumen jika nomor pendaftaran berubah.
+     */
+    public function updateMajorWithNumberChange($newMajor): string
+    {
+        if (is_numeric($newMajor)) {
+            $newMajor = Major::findOrFail($newMajor);
+        }
+
+        $oldNumber = $this->registration_number;
+        $oldMajorId = $this->major_id;
+
+        // Jika jurusannya sama, tidak ada perubahan
+        if ($oldMajorId == $newMajor->id) {
+            return $oldNumber;
+        }
+
+        // Ambil nomor urut siswa dari nomor pendaftaran lama (3 digit terakhir jika ada)
+        $seq = null;
+        if (strlen($oldNumber) >= 4) {
+            $seq = (int) substr($oldNumber, 3);
+        }
+        if (!$seq || $seq <= 0) {
+            $seq = $this->user_id;
+        }
+
+        $newNumber = static::generateNumber($newMajor, $seq, $this->academic_year_id, $this->id);
+
+        // Pindahkan berkas dokumen jika nomor pendaftaran berubah
+        if ($oldNumber && $oldNumber !== $newNumber) {
+            $oldDir = 'documents/' . $oldNumber;
+            $newDir = 'documents/' . $newNumber;
+
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($oldDir)) {
+                $files = \Illuminate\Support\Facades\Storage::disk('public')->allFiles($oldDir);
+                foreach ($files as $file) {
+                    $dest = str_replace($oldDir . '/', $newDir . '/', $file);
+                    \Illuminate\Support\Facades\Storage::disk('public')->move($file, $dest);
+                }
+                \Illuminate\Support\Facades\Storage::disk('public')->deleteDirectory($oldDir);
+            }
+
+            // Perbarui path dokumen di database
+            if ($this->documents) {
+                foreach ($this->documents as $doc) {
+                    if (str_contains($doc->file_path, $oldNumber)) {
+                        $doc->update([
+                            'file_path' => str_replace($oldNumber, $newNumber, $doc->file_path),
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $this->update([
+            'major_id' => $newMajor->id,
+            'registration_number' => $newNumber,
+        ]);
+
+        return $newNumber;
     }
 
     /**

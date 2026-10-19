@@ -270,16 +270,13 @@
                         
                         <div class="absolute -top-12 -right-12 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
-                        <!-- ROLE SWITCHER TABS PADA PORTAL HERO -->
-                        <div class="flex items-center justify-center p-1 bg-slate-100/90 rounded-2xl mb-5 text-[11px] font-bold">
-                            <button type="button" onclick="switchLoginRole('murid')" id="tab-murid" class="flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition">
-                                Calon Siswa
+                        <!-- ROLE SWITCHER TABS PADA PORTAL HERO (2 PORTAL: CALON SISWA & PANITIA SPMB) -->
+                        <div class="flex items-center justify-center p-1 bg-slate-100/90 rounded-2xl mb-5 text-xs font-bold">
+                            <button type="button" onclick="switchLoginRole('murid')" id="tab-murid" class="flex-1 py-2 px-3 rounded-xl bg-white text-blue-700 shadow-sm transition text-center">
+                                <i class="fa-solid fa-user-graduate mr-1"></i> Calon Siswa
                             </button>
-                            <button type="button" onclick="switchLoginRole('panitia')" id="tab-panitia" class="flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition">
-                                Panitia SPMB
-                            </button>
-                            <button type="button" onclick="switchLoginRole('admin')" id="tab-admin" class="flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition">
-                                Administrator
+                            <button type="button" onclick="switchLoginRole('panitia')" id="tab-panitia" class="flex-1 py-2 px-3 rounded-xl text-slate-600 hover:text-slate-900 transition text-center">
+                                <i class="fa-solid fa-users-gear mr-1"></i> Panitia SPMB
                             </button>
                         </div>
 
@@ -320,17 +317,6 @@
                                     </span>
                                     <input type="password" name="password" id="input-password" placeholder="Masukkan kata sandi" required
                                            class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition">
-                                </div>
-                            </div>
-
-                            <!-- QUICK DEMO FILL BUTTONS -->
-                            <div id="demo-badge-container" class="hidden p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-[11px] text-slate-600">
-                                <span class="font-bold block text-slate-700 mb-1">Akun Percobaan (Demo):</span>
-                                <div class="flex items-center justify-between">
-                                    <code id="demo-acc-text" class="text-blue-600 font-mono font-bold text-[10px]"></code>
-                                    <button type="button" onclick="fillDemoCredentials()" class="px-2 py-0.5 rounded bg-blue-600 text-white font-bold text-[10px] hover:bg-blue-700">
-                                        Isi Otomatis
-                                    </button>
                                 </div>
                             </div>
 
@@ -568,9 +554,10 @@
                             if(str_starts_with($helpdeskWa, '0')) {
                                 $helpdeskWa = '62' . substr($helpdeskWa, 1);
                             }
+                            $hotlineWaText = \App\Models\SystemSetting::formatWaHotlineMessage($globalSettings['wa_hotline_template'] ?? null);
                         @endphp
                         <div class="mt-5">
-                            <a href="https://wa.me/{{ $helpdeskWa }}?text=Halo%20Helpdesk%20Panitia%20SPMB%20SMK%20Karya%20Nugraha%20Boyolali" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm">
+                            <a href="https://wa.me/{{ $helpdeskWa }}?text={{ urlencode($hotlineWaText) }}" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow transition text-xs sm:text-sm">
                                 <i class="fa-brands fa-whatsapp text-lg"></i> Hubungi WhatsApp Helpdesk Panitia
                             </a>
                         </div>
@@ -680,39 +667,22 @@
                     @endif
                 </div>
                 <h3 class="text-base font-extrabold text-slate-900" id="staff-modal-title">Portal Petugas SPMB</h3>
-                <p class="text-xs text-slate-500" id="staff-modal-sub">Login Khusus Administrator & Panitia</p>
-            </div>
-
-            <!-- TABS PILIHAN ROLE PETUGAS -->
-            <div class="flex items-center p-1 bg-slate-100 rounded-xl mb-4 text-xs font-bold">
-                <button type="button" onclick="setModalRole('admin')" id="modal-tab-admin" class="flex-1 py-1.5 rounded-lg bg-blue-600 text-white shadow transition">
-                    Administrator
-                </button>
-                <button type="button" onclick="setModalRole('panitia')" id="modal-tab-panitia" class="flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">
-                    Panitia SPMB
-                </button>
+                <p class="text-xs text-slate-500" id="staff-modal-sub">Login Petugas: Panitia, Bendahara & Administrator</p>
             </div>
 
             <!-- FORM LOGIN PETUGAS -->
             <form action="{{ route('login.post') }}" method="POST" class="space-y-3.5">
                 @csrf
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Email / Username Petugas</label>
-                    <input type="text" name="login_identity" id="modal-staff-identity" value="admin@smkknbi.sch.id" required
+                    <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username / Email Petugas</label>
+                    <input type="text" name="login_identity" id="modal-staff-identity" placeholder="Masukkan username atau email petugas" required
                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600">
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Kata Sandi (Password)</label>
-                    <input type="password" name="password" id="modal-staff-pwd" value="password" required
+                    <input type="password" name="password" id="modal-staff-pwd" placeholder="Kata sandi akun petugas" required
                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:border-blue-600">
-                </div>
-
-                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500">
-                    <span class="font-bold text-slate-700">Akun Demo Terdaftar:</span>
-                    <div class="text-[10px] mt-0.5" id="staff-demo-info">
-                        Email: <strong>admin@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>
-                    </div>
                 </div>
 
                 <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow transition">
@@ -731,95 +701,40 @@
             currentRole = role;
             const tabMurid = document.getElementById('tab-murid');
             const tabPanitia = document.getElementById('tab-panitia');
-            const tabAdmin = document.getElementById('tab-admin');
             const roleTitle = document.getElementById('role-title');
             const roleSubtitle = document.getElementById('role-subtitle');
             const roleIcon = document.getElementById('role-icon');
             const roleIconBox = document.getElementById('role-icon-box');
             const labelIdentity = document.getElementById('label-identity');
             const inputIdentity = document.getElementById('input-identity');
-            const inputPassword = document.getElementById('input-password');
-            const demoContainer = document.getElementById('demo-badge-container');
-            const demoAccText = document.getElementById('demo-acc-text');
 
-            // Reset tab styles
-            [tabMurid, tabPanitia, tabAdmin].forEach(tab => {
-                tab.className = 'flex-1 py-1.5 px-2 rounded-xl text-slate-600 hover:text-slate-900 transition';
-            });
-
-            if (role === 'admin') {
-                tabAdmin.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition';
-                roleTitle.innerText = 'Portal Administrator';
-                roleSubtitle.innerText = 'Kelola pendaftar, kuota jurusan, dan tim panitia';
-                roleIcon.className = 'fa-solid fa-user-shield';
-                roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-2.5 shadow-inner';
-                labelIdentity.innerText = 'Email Administrator *';
-                inputIdentity.placeholder = 'admin@smkknbi.sch.id';
-                demoContainer.classList.remove('hidden');
-                demoAccText.innerText = 'admin@smkknbi.sch.id / password';
-            } else if (role === 'panitia') {
-                tabPanitia.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-indigo-700 shadow-sm transition';
+            if (role === 'panitia') {
+                tabMurid.className = 'flex-1 py-2 px-3 rounded-xl text-slate-600 hover:text-slate-900 transition text-center';
+                tabPanitia.className = 'flex-1 py-2 px-3 rounded-xl bg-white text-indigo-700 shadow-sm transition text-center';
                 roleTitle.innerText = 'Portal Panitia SPMB';
-                roleSubtitle.innerText = 'Meja verifikasi dokumen & keabsahan berkas calon siswa';
-                roleIcon.className = 'fa-solid fa-clipboard-check';
+                roleSubtitle.innerText = 'Login petugas Panitia, Bendahara & Administrator SPMB';
+                roleIcon.className = 'fa-solid fa-users-gear';
                 roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-indigo-50 text-indigo-600 text-2xl mb-2.5 shadow-inner';
-                labelIdentity.innerText = 'Email Panitia *';
-                inputIdentity.placeholder = 'panitia@smkknbi.sch.id';
-                demoContainer.classList.remove('hidden');
-                demoAccText.innerText = 'panitia@smkknbi.sch.id / password';
+                labelIdentity.innerText = 'Email / Username Petugas *';
+                inputIdentity.placeholder = 'Masukkan username atau email petugas';
             } else {
-                tabMurid.className = 'flex-1 py-1.5 px-2 rounded-xl bg-white text-blue-700 shadow-sm transition';
+                tabPanitia.className = 'flex-1 py-2 px-3 rounded-xl text-slate-600 hover:text-slate-900 transition text-center';
+                tabMurid.className = 'flex-1 py-2 px-3 rounded-xl bg-white text-blue-700 shadow-sm transition text-center';
                 roleTitle.innerText = 'Portal Calon Siswa';
                 roleSubtitle.innerText = 'Masuk menggunakan No. HP atau NISN pendaftaran Anda';
                 roleIcon.className = 'fa-solid fa-id-card-clip';
                 roleIconBox.className = 'inline-flex p-3 rounded-2xl bg-blue-50 text-blue-600 text-2xl mb-2.5 shadow-inner';
                 labelIdentity.innerText = 'No. WhatsApp / NISN *';
                 inputIdentity.placeholder = 'Contoh: 085861512412';
-                demoContainer.classList.add('hidden');
             }
         }
 
-        function fillDemoCredentials() {
-            const inputIdentity = document.getElementById('input-identity');
-            const inputPassword = document.getElementById('input-password');
-            if (currentRole === 'admin') {
-                inputIdentity.value = 'admin@smkknbi.sch.id';
-                inputPassword.value = 'password';
-            } else if (currentRole === 'panitia') {
-                inputIdentity.value = 'panitia@smkknbi.sch.id';
-                inputPassword.value = 'password';
-            }
-        }
-
-        function openStaffModal(targetRole = 'admin') {
+        function openStaffModal() {
             document.getElementById('modal-staff').classList.remove('hidden');
-            setModalRole(targetRole);
         }
 
         function closeStaffModal() {
             document.getElementById('modal-staff').classList.add('hidden');
-        }
-
-        function setModalRole(role) {
-            const tabAdmin = document.getElementById('modal-tab-admin');
-            const tabPanitia = document.getElementById('modal-tab-panitia');
-            const identity = document.getElementById('modal-staff-identity');
-            const pwd = document.getElementById('modal-staff-pwd');
-            const info = document.getElementById('staff-demo-info');
-
-            if (role === 'panitia') {
-                tabPanitia.className = 'flex-1 py-1.5 rounded-lg bg-indigo-600 text-white shadow transition';
-                tabAdmin.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
-                identity.value = 'panitia@smkknbi.sch.id';
-                pwd.value = 'password';
-                info.innerHTML = 'Email: <strong>panitia@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>';
-            } else {
-                tabAdmin.className = 'flex-1 py-1.5 rounded-lg bg-blue-600 text-white shadow transition';
-                tabPanitia.className = 'flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition';
-                identity.value = 'admin@smkknbi.sch.id';
-                pwd.value = 'password';
-                info.innerHTML = 'Email: <strong>admin@smkknbi.sch.id</strong> &bull; Sandi: <strong>password</strong>';
-            }
         }
     </script>
 

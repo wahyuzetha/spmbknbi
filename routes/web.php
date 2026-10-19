@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Murid\DashboardController as MuridDashboardController;
 use App\Http\Controllers\Panitia\DashboardController as PanitiaDashboardController;
+use App\Http\Controllers\Bendahara\DashboardController as BendaharaDashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,6 +40,9 @@ Route::middleware('auth')->get('/dashboard', function () {
     $user = auth()->user();
     if ($user->isAdmin()) {
         return redirect()->route('admin.dashboard');
+    }
+    if ($user->isBendahara()) {
+        return redirect()->route('bendahara.dashboard');
     }
     if ($user->isPanitia()) {
         return redirect()->route('panitia.dashboard');
@@ -86,6 +90,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/administrasi/pembayaran/store', [AdminDashboardController::class, 'storePayment'])->name('administrasi.payment.store');
     Route::get('/administrasi/pembayaran/{id}/kwitansi', [AdminDashboardController::class, 'printPaymentReceipt'])->name('administrasi.payment.receipt');
     Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
+    Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
+    Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
 
     // FITUR PENGELUARAN KAS SPMB (UANG CALON SISWA PENDAFTAR)
     Route::post('/administrasi/pengeluaran/store', [AdminDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
@@ -101,11 +107,27 @@ Route::middleware(['auth', 'role:panitia'])->prefix('panitia')->name('panitia.')
     Route::post('/settings/update', [PanitiaDashboardController::class, 'updateSettings'])->name('settings.update');
 
     // Export & Cetak untuk Panitia
-    Route::get('/spmb/calon-siswa/export-excel', [AdminDashboardController::class, 'exportExcel'])->name('spmb.exportExcel');
-    Route::get('/spmb/calon-siswa/cetak-all', [AdminDashboardController::class, 'printAllStudents'])->name('spmb.printAll');
-    Route::get('/spmb/calon-siswa/{id}/cetak-kartu', [AdminDashboardController::class, 'printStudentCard'])->name('spmb.printCard');
+    Route::get('/spmb/calon-siswa/export-excel', [PanitiaDashboardController::class, 'exportExcel'])->name('spmb.exportExcel');
+    Route::get('/spmb/calon-siswa/cetak-all', [PanitiaDashboardController::class, 'printAllStudents'])->name('spmb.printAll');
+    Route::get('/spmb/calon-siswa/{id}/cetak-kartu', [PanitiaDashboardController::class, 'printStudentCard'])->name('spmb.printCard');
+    Route::post('/spmb/calon-siswa/{id}/update', [AdminDashboardController::class, 'updateStudentManual'])->name('spmb.student.update');
+    Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
+    Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
 });
 
-// 6. Database Viewer Browser (Langsung Dibuka di Browser)
+// 6. Portal Bendahara SPMB (Protected by Auth & Role: bendahara)
+Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendahara.')->group(function () {
+    Route::get('/dashboard', [BendaharaDashboardController::class, 'index'])->name('dashboard');
+    Route::post('/administrasi/pembayaran/store', [BendaharaDashboardController::class, 'storePayment'])->name('administrasi.payment.store');
+    Route::get('/administrasi/pembayaran/{id}/kwitansi', [BendaharaDashboardController::class, 'printPaymentReceipt'])->name('administrasi.payment.receipt');
+    Route::get('/administrasi/pembayaran/rekap/{registrationId}', [BendaharaDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
+    Route::get('/administrasi/pembayaran/export-excel', [BendaharaDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
+    Route::post('/administrasi/pembayaran/{registrationId}/change-major', [BendaharaDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
+    Route::post('/administrasi/pengeluaran/store', [BendaharaDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
+    Route::post('/administrasi/pengeluaran/{id}/update', [BendaharaDashboardController::class, 'updateExpense'])->name('administrasi.expense.update');
+    Route::post('/administrasi/pengeluaran/{id}/delete', [BendaharaDashboardController::class, 'deleteExpense'])->name('administrasi.expense.delete');
+});
+
+// 7. Database Viewer Browser (Langsung Dibuka di Browser)
 Route::get('/admin/database', [DatabaseViewerController::class, 'index'])->name('admin.database');
 Route::get('/database', [DatabaseViewerController::class, 'index'])->name('database.viewer');

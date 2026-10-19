@@ -79,7 +79,7 @@ class MajorSeeder extends Seeder
         ];
 
         foreach ($majors as $major) {
-            Major::updateOrCreate(
+            Major::firstOrCreate(
                 ['code' => $major['code']],
                 $major
             );

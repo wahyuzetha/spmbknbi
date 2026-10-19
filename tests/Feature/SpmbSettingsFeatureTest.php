@@ -12,6 +12,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SpmbSettingsFeatureTest extends TestCase
@@ -97,6 +98,10 @@ class SpmbSettingsFeatureTest extends TestCase
         $this->assertTrue(File::exists(public_path($savedLogo)));
         $this->assertTrue(File::exists(public_path($savedTtd)));
         $this->assertTrue(File::exists(public_path($savedKop)));
+
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('storage/', '', $savedLogo)));
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('storage/', '', $savedTtd)));
+        $this->assertTrue(Storage::disk('public')->exists(str_replace('storage/', '', $savedKop)));
 
         // Cleanup
         File::delete(public_path($savedLogo));
@@ -339,16 +344,114 @@ class SpmbSettingsFeatureTest extends TestCase
         $resAdmin->assertSee('DITERIMA', false);
         $resAdmin->assertSee('Panitia PMDK/SPMB,', false);
 
+        // Pastikan TIDAK ADA barcode/QR Code dan TIDAK ADA NIP pada Bukti Pendaftaran Calon Siswa
+        $resAdmin->assertDontSee('api.qrserver.com', false);
+        $resAdmin->assertDontSee('QR Code', false);
+        $resAdmin->assertDontSee('NIP:', false);
+        $resAdmin->assertDontSee('NIP.', false);
+
         // 3. Akses Bukti Pendaftaran oleh Murid dari Dashboardnya
         $resMurid = $this->actingAs($murid, 'web')->get(route('murid.print.card'));
         $resMurid->assertStatus(200);
         $resMurid->assertSee('BUKTI PENDAFTARAN CALON', false);
         $resMurid->assertSee('DITERIMA', false);
         $resMurid->assertSee(asset($kopPath), false);
+        $resMurid->assertDontSee('api.qrserver.com', false);
+        $resMurid->assertDontSee('QR Code', false);
+        $resMurid->assertDontSee('NIP:', false);
+        $resMurid->assertDontSee('NIP.', false);
 
         // Cleanup
         if (File::exists(public_path($kopPath))) {
             File::delete(public_path($kopPath));
+        }
+    }
+
+    public function test_admin_dapat_memperbarui_dan_mengkustomisasi_template_pesan_whatsapp_spmb()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        // 1. Simpan template WhatsApp kustom lewat route pengaturan SPMB
+        $customTemplate = "Halo Sdr. {nama}, Anda terdaftar di {sekolah} dg No {no_pendaftaran} jurusan {jurusan} status {status} asal {asal_sekolah}. Login: user={username} pass={password}. Hotline: {hotline}";
+        $customHotline = "Halo Helpdesk {sekolah}, saya butuh info pendaftaran.";
+
+        $response = $this->actingAs($admin)->post(route('admin.settings.spmb.update'), [
+            'school_name' => 'SMK KARYA NUGRAHA BOYOLALI',
+            'hotline_panitia' => '085876098129',
+            'wa_message_template' => $customTemplate,
+            'wa_hotline_template' => $customHotline,
+        ]);
+
+        $response->assertRedirect(route('admin.dashboard', ['view' => 'pengaturan']));
+        $response->assertSessionHas('success');
+
+        $this->assertEquals($customTemplate, SystemSetting::get('wa_message_template'));
+        $this->assertEquals($customHotline, SystemSetting::get('wa_hotline_template'));
+
+        // 2. Buat data dummy calon siswa untuk validasi placeholder
+        $siswaMurid = Siswa::create([
+            'name' => 'Budi Santoso',
+            'username' => '20269999',
+            'email' => 'budisantoso9999@test.com',
+            'phone' => '081234567890',
+            'password' => bcrypt('secret123'),
+            'raw_password' => 'secret123',
+            'role' => 'murid',
+        ]);
+
+        $major = Major::first();
+        $academicYear = AcademicYear::where('is_active', true)->first() ?? AcademicYear::first();
+        $reg = Registration::create([
+            'user_id' => $siswaMurid->id,
+            'academic_year_id' => $academicYear->id,
+            'major_id' => $major->id,
+            'registration_number' => 'REG-9999',
+            'status' => 'verified',
+        ]);
+
+        StudentBiodata::create([
+            'registration_id' => $reg->id,
+            'nama_lengkap' => 'Budi Santoso',
+            'jenis_kelamin' => 'L',
+        ]);
+
+        StudentSchool::create([
+            'registration_id' => $reg->id,
+            'asal_sekolah' => 'SMP Negeri 2 Boyolali',
+        ]);
+
+        // 3. Format pesan WhatsApp dan verifikasi semua tag tergantikan
+        $reg->load(['user', 'major', 'biodata', 'school']);
+        $formatted = SystemSetting::formatWaMessage($reg);
+
+        $this->assertStringContainsString('Budi Santoso', $formatted);
+        $this->assertStringContainsString('REG-9999', $formatted);
+        $this->assertStringContainsString($major->name, $formatted);
+        $this->assertStringContainsString('Terverifikasi', $formatted);
+        $this->assertStringContainsString('SMP Negeri 2 Boyolali', $formatted);
+        $this->assertStringContainsString('20269999', $formatted);
+        $this->assertStringContainsString('secret123', $formatted);
+        $this->assertStringContainsString('085876098129', $formatted);
+
+        // Hotline message formatting
+        $formattedHotline = SystemSetting::formatWaHotlineMessage();
+        $this->assertStringContainsString('SMK KARYA NUGRAHA BOYOLALI', $formattedHotline);
+
+        // 4. Pastikan tampilan admin dan panitia memuat section WhatsApp dan tombol aksi chat
+        $adminView = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'pengaturan']));
+        $adminView->assertStatus(200);
+        $adminView->assertSee('Pengaturan Pesan Chat Otomatis WhatsApp SPMB', false);
+        $adminView->assertSee('wa_message_template', false);
+        $adminView->assertSee('wa_hotline_template', false);
+
+        // Test panitia dashboard sees the WhatsApp chat button
+        $panitia = User::where('role', 'panitia')->first();
+        if ($panitia) {
+            $panitiaView = $this->actingAs($panitia)->get(route('panitia.dashboard', ['view' => 'verifikasi', 'search' => 'REG-9999']));
+            $panitiaView->assertStatus(200);
+            $panitiaView->assertSee('Budi Santoso');
+            $panitiaView->assertSee('https://wa.me/6281234567890?text=', false);
         }
     }
 }

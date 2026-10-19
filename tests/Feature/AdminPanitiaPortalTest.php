@@ -4,17 +4,24 @@ namespace Tests\Feature;
 
 use App\Models\AcademicYear;
 use App\Models\Major;
+use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\Siswa;
+use App\Models\StudentSchool;
 use App\Models\User;
 use Tests\TestCase;
 
 class AdminPanitiaPortalTest extends TestCase
 {
-    public function test_admin_and_panitia_dashboards()
+    protected function setUp(): void
     {
+        parent::setUp();
         $this->artisan('migrate');
         $this->artisan('db:seed');
+    }
+
+    public function test_admin_and_panitia_dashboards()
+    {
 
         $admin = User::where('role', 'admin')->first();
         $panitia = User::where('role', 'panitia')->first();
@@ -209,5 +216,128 @@ class AdminPanitiaPortalTest extends TestCase
         $deletedLoginFail->assertSessionHasErrors();
 
         echo "\n[SUCCESS] Admin and Panitia Portals, Data Jurusan, and Data Pengguna verified successfully!\n";
+    }
+
+    /**
+     * Test tampilan metrik yang sudah bayar menampilkan JUMLAH SISWA yang bayar (bukan jumlah transaksi)
+     */
+    public function test_dashboard_menampilkan_jumlah_siswa_bayar_bukan_jumlah_transaksi(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $reg = Registration::first();
+
+        // Buat 3 transaksi pembayaran untuk 1 siswa yang sama
+        Payment::create([
+            'invoice_number' => 'INV-TEST-001',
+            'registration_id' => $reg->id,
+            'amount' => 500000,
+            'payment_date' => now(),
+            'status' => 'confirmed',
+            'payment_method' => 'cash',
+        ]);
+        Payment::create([
+            'invoice_number' => 'INV-TEST-002',
+            'registration_id' => $reg->id,
+            'amount' => 300000,
+            'payment_date' => now(),
+            'status' => 'confirmed',
+            'payment_method' => 'cash',
+        ]);
+        Payment::create([
+            'invoice_number' => 'INV-TEST-003',
+            'registration_id' => $reg->id,
+            'amount' => 200000,
+            'payment_date' => now(),
+            'status' => 'confirmed',
+            'payment_method' => 'cash',
+        ]);
+
+        $resAdmin = $this->actingAs($admin)->get('/admin/dashboard');
+        $resAdmin->assertStatus(200);
+
+        // Metrik harus berisi jumlah siswa unik yang bayar
+        $paidStudentsCount = Registration::whereHas('payments', function ($q) {
+            $q->whereIn('status', ['confirmed', 'success']);
+        })->count();
+
+        $this->assertEquals($paidStudentsCount, $resAdmin->viewData('paidCount'));
+        $resAdmin->assertSee('Jumlah Siswa Bayar');
+    }
+
+    /**
+     * Test dashboard menampilkan grafik jurusan dan grafik asal SMP dengan normalisasi kosakata default
+     */
+    public function test_dashboard_menampilkan_grafik_jurusan_dan_grafik_asal_smp_dengan_normalisasi(): void
+    {
+        $admin = User::where('role', 'admin')->first();
+        $panitia = User::where('role', 'panitia')->first();
+
+        // 1. Cek Admin Dashboard
+        $resAdmin = $this->actingAs($admin)->get('/admin/dashboard');
+        $resAdmin->assertStatus(200);
+        $resAdmin->assertSee('chartMajorPendaftar');
+        $resAdmin->assertSee('chartSchoolPendaftar');
+        $resAdmin->assertSee('Jumlah Pendaftar per Jurusan');
+        $resAdmin->assertSee('Jumlah Pendaftar Asal SMP / MTs');
+
+        // 2. Cek Panitia Dashboard
+        $resPanitia = $this->actingAs($panitia)->get('/panitia/dashboard');
+        $resPanitia->assertStatus(200);
+        $resPanitia->assertSee('chartMajorPendaftarPanitia');
+        $resPanitia->assertSee('chartSchoolPendaftarPanitia');
+        $resPanitia->assertSee('Jumlah Pendaftar per Jurusan');
+        $resPanitia->assertSee('Jumlah Pendaftar Asal SMP / MTs');
+
+        // 3. Uji Normalisasi Kosakata Sekolah yang berbeda kosakata menjadi 1 default
+        $this->assertEquals('SMP NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('smp n 1 boyolali'));
+        $this->assertEquals('SMP NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('SMPN 1 BOYOLALI'));
+        $this->assertEquals('SMP NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('SMP Negeri 1 Boyolali'));
+        $this->assertEquals('SMP NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('SMP 1 Boyolali'));
+        $this->assertEquals('SMP NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('SMPN1 BOYOLALI'));
+        $this->assertEquals('SMP NEGERI 3 MOJOSONGO', StudentSchool::normalizeSchoolName('SMP N 3 MOJOSONGO'));
+        $this->assertEquals('SMP NEGERI 3 MOJOSONGO', StudentSchool::normalizeSchoolName('SMPN 3 MOJOSONGO'));
+        $this->assertEquals('MTS NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('MTS N 1 BOYOLALI'));
+        $this->assertEquals('MTS NEGERI 1 BOYOLALI', StudentSchool::normalizeSchoolName('MTSN 1 BOYOLALI'));
+    }
+
+    /**
+     * Test panitia SPMB dapat melakukan export excel data calon siswa dan cetak bukti pendaftaran
+     */
+    public function test_panitia_dapat_mencetak_bukti_pendaftaran_dan_export_excel_calon_siswa(): void
+    {
+        $panitia = User::where('role', 'panitia')->first();
+        $this->assertNotNull($panitia, 'Panitia user should exist');
+
+        $registration = Registration::first();
+        $this->assertNotNull($registration, 'Registration should exist');
+
+        // 1. Panitia dapat mengakses Export Excel Data Calon Siswa (.xlsx)
+        $excelRes = $this->actingAs($panitia)->get(route('panitia.spmb.exportExcel'));
+        $excelRes->assertStatus(200);
+        $this->assertStringContainsString('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', $excelRes->headers->get('content-type'));
+        $this->assertStringContainsString('attachment; filename=', $excelRes->headers->get('content-disposition'));
+        $this->assertStringContainsString('.xlsx', $excelRes->headers->get('content-disposition'));
+
+        // 2. Panitia dapat mengakses Cetak Bukti Pendaftaran / Kartu Calon Siswa Satuan
+        $cardRes = $this->actingAs($panitia)->get(route('panitia.spmb.printCard', $registration->id));
+        $cardRes->assertStatus(200);
+        $cardRes->assertSee('BUKTI PENDAFTARAN CALON', false);
+        $cardRes->assertSee($registration->registration_number, false);
+        $cardRes->assertSee('SMK KARYA NUGRAHA BOYOLALI', false);
+
+        // 3. Panitia dapat mengakses Cetak All Rekapitulasi Calon Siswa
+        $printAllRes = $this->actingAs($panitia)->get(route('panitia.spmb.printAll'));
+        $printAllRes->assertStatus(200);
+        $printAllRes->assertSee('PANITIA PENERIMAAN PESERTA DIDIK BARU', false);
+        $printAllRes->assertSee($registration->registration_number, false);
+
+        // 4. Pastikan di Meja Verifikasi Berkas Panitia tombol Export Excel dan Cetak Bukti tersedia
+        $dashboardRes = $this->actingAs($panitia)->get(route('panitia.dashboard', ['view' => 'verifikasi']));
+        $dashboardRes->assertStatus(200);
+        $dashboardRes->assertSee('Export Excel', false);
+        $dashboardRes->assertSee('Cetak All', false);
+        $dashboardRes->assertSee(route('panitia.spmb.exportExcel'), false);
+        $dashboardRes->assertSee(route('panitia.spmb.printCard', $registration->id), false);
+        $dashboardRes->assertSee('modal-print-card-btn-p', false);
     }
 }

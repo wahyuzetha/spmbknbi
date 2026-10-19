@@ -8,7 +8,9 @@ use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\StudentDocument;
+use App\Models\StudentSchool;
 use App\Models\SystemSetting;
+use App\Services\StudentExportService;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -25,12 +27,38 @@ class DashboardController extends Controller
         $totalRegistrations = Registration::count();
         $acceptedCount = Registration::where('status', 'accepted')->count();
         $pendingTestCount = Registration::where('status', 'pending')->count();
-        $paidCount = Payment::where('status', 'confirmed')->orWhere('status', 'success')->count();
+        
+        // Jumlah siswa unik yang sudah bayar (bukan jumlah transaksi)
+        $paidCount = Registration::whereHas('payments', function ($q) {
+            $q->whereIn('status', ['confirmed', 'success']);
+        })->count();
 
         $totalQueue = $pendingTestCount;
         $totalVerified = Registration::where('status', 'verified')->count();
         $totalAccepted = $acceptedCount;
         $totalNeedsFix = Registration::where('status', 'rejected')->count();
+
+        // Data Grafik Pendaftar per Jurusan
+        $chartMajorNames = $majors->pluck('name')->toArray();
+        $chartMajorAliases = $majors->map(fn($m) => $m->alias ?: $m->name)->toArray();
+        $chartMajorCounts = $majors->pluck('registrations_count')->toArray();
+        $chartMajorQuotas = $majors->pluck('quota')->toArray();
+
+        // Data Grafik Asal Sekolah SMP (dengan normalisasi kosakata ke 1 default standar)
+        $schoolRegistrations = StudentSchool::whereNotNull('asal_sekolah')
+            ->where('asal_sekolah', '!=', '')
+            ->where('asal_sekolah', '!=', '-')
+            ->get();
+
+        $schoolGroups = $schoolRegistrations->map(function ($s) {
+            return StudentSchool::normalizeSchoolName($s->asal_sekolah);
+        })->filter(function ($name) {
+            return $name !== 'TIDAK DIKETAHUI';
+        })->countBy()->sortDesc();
+
+        $chartSchoolNames = $schoolGroups->keys()->toArray();
+        $chartSchoolCounts = $schoolGroups->values()->toArray();
+        $totalUniqueSchools = $schoolGroups->count();
 
         // 2. Query Pendaftar
         $query = Registration::with(['user', 'major', 'biodata', 'parents', 'school', 'documents', 'verifier'])
@@ -62,7 +90,7 @@ class DashboardController extends Controller
         $registrations = $query->paginate(12)->withQueryString();
 
         // 3. Data Pembayaran
-        $payments = Payment::with('registration.user')->latest()->paginate(10);
+        $payments = Payment::with(['registration.user', 'registration.major'])->latest()->paginate(10);
 
         // 4. Pengaturan Sistem
         $settings = SystemSetting::pluck('value', 'key');
@@ -84,6 +112,13 @@ class DashboardController extends Controller
             'registrations',
             'payments',
             'settings',
+            'chartMajorNames',
+            'chartMajorAliases',
+            'chartMajorCounts',
+            'chartMajorQuotas',
+            'chartSchoolNames',
+            'chartSchoolCounts',
+            'totalUniqueSchools',
             'currentView',
             'profileTab'
         ));
@@ -154,5 +189,51 @@ class DashboardController extends Controller
         }
 
         return back()->with('success', 'Data Profil Sekolah berhasil disimpan!');
+    }
+
+    /**
+     * Export Excel (.xlsx) Lengkap Seluruh Data Calon Siswa (PhpSpreadsheet).
+     */
+    public function exportExcel(Request $request, StudentExportService $exporter)
+    {
+        return $exporter->exportAll(
+            $request->status,
+            $request->major_id,
+            $request->search
+        );
+    }
+
+    /**
+     * Cetak All: Laporan Resmi Seluruh Calon Siswa Terdaftar (Siap Print / PDF).
+     */
+    public function printAllStudents(Request $request)
+    {
+        $query = Registration::with(['user', 'major', 'biodata', 'school', 'parent'])
+            ->latest();
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('major_id')) {
+            $query->where('major_id', $request->major_id);
+        }
+
+        $registrations = $query->get();
+        $academicYear = AcademicYear::where('is_active', true)->first();
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.print_all', compact('registrations', 'academicYear', 'settings'));
+    }
+
+    /**
+     * Cetak Kartu Tanda Bukti Pendaftaran Calon Siswa (Siap Print / PDF).
+     */
+    public function printStudentCard($id)
+    {
+        $registration = Registration::with(['user', 'major', 'majorChoice2', 'biodata', 'school', 'parent', 'academicYear', 'documents'])
+            ->findOrFail($id);
+        $settings = SystemSetting::pluck('value', 'key');
+
+        return view('admin.print_card', compact('registration', 'settings'));
     }
 }

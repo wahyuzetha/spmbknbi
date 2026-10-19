@@ -269,6 +269,7 @@ class AuthController extends Controller
         return match ($user->role) {
             'admin' => route('admin.dashboard', [], false),
             'panitia' => route('panitia.dashboard', [], false),
+            'bendahara' => route('bendahara.dashboard', [], false),
             default => route('murid.dashboard', [], false),
         };
     }
