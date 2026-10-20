@@ -181,6 +181,23 @@
         $schoolCity = $settings['school_city'] ?? 'Boyolali';
         $kopBanner = $settings['cop_image_banner'] ?? $copImageBanner ?? null;
         $chairmanName = $settings['chairman_name'] ?? 'Ketua Panitia SPMB';
+
+        // Format Surat Pernyataan (Lembar 3) dari Pengaturan Admin
+        $statementTitle = $settings['statement_letter_title'] ?? 'SURAT PERNYATAAN';
+        $statementParentHeader = $settings['statement_letter_parent_header'] ?? 'Yang bertanda tangan dibawah ini, saya orang tua :';
+        $statementStudentHeader = $settings['statement_letter_student_header'] ?? 'Sebagai orang tua/ wali murid dari calon siswa';
+        $statementIntroRaw = $settings['statement_letter_intro'] ?? 'Sehubungan dengan diberikannya kesempatan kepada anak saya sebagai calon siswa Jalur PMDK SMK Karya Nugraha Tahun {tahun_pelajaran}, saya menyatakan setuju dan titip administrasi keuangan dengan ketentuan apabila anak saya:';
+        $statementIntro = strtr($statementIntroRaw, [
+            '{tahun_pelajaran}' => $academicYearName,
+            '{sekolah}' => $schoolName,
+        ]);
+        $statementRules = $settings['statement_letter_rules'] ?? \App\Models\SystemSetting::defaultStatementLetterRules();
+        $statementClosing = $settings['statement_letter_closing'] ?? 'Demikian pernyataan ini kami buat, dengan penuh kesadaran dan tanpa paksaan dari pihak manapun, untuk dapat digunakan sebagaimana mestinya.';
+        $statementCity = $settings['statement_letter_city'] ?? ($schoolCity ?: 'Boyolali');
+        $statementDate = $settings['statement_letter_date'] ?? '_____________ 20….';
+        $statementPrincipalTitle = $settings['statement_letter_principal_title'] ?? 'Kepala Sekolah';
+        $statementPrincipalName = $settings['statement_letter_principal_name'] ?? 'NUR WAKHID ROMDHONI, SE';
+        $statementNotes = $settings['statement_letter_notes'] ?? \App\Models\SystemSetting::defaultStatementLetterNotes();
     @endphp
 
     <!-- FLOATING TOP BAR MODERN (HANYA MUNCUL DI LAYAR SCREEN) -->
@@ -194,7 +211,7 @@
                     Pratinjau Bukti Pendaftaran (Standar Kertas F4)
                 </span>
                 <span class="text-[10px] text-slate-400">
-                    2 Halaman &bull; Rasio 215mm x 330mm &bull; Siap Dicetak / Disimpan ke PDF
+                    3 Halaman (Termasuk Lembar Surat Pernyataan) &bull; Rasio 215mm x 330mm &bull; Siap Dicetak / Disimpan ke PDF
                 </span>
             </div>
         </div>
@@ -578,5 +595,247 @@
 
     </div>
 
+    <!-- ========================================================================================= -->
+    <!-- LEMBAR F4: HALAMAN 3 (SURAT PERNYATAAN ORANG TUA / WALI SISWA)                            -->
+    <!-- ========================================================================================= -->
+    <div class="page-break"></div>
+    <div class="sheet text-slate-900 text-xs font-serif leading-normal">
+
+        <!-- KOP SURAT RESMI (SAMA PERSIS LEMBAR 1 & 2) -->
+        <div class="kop-header mb-3 pb-2 border-b-2 border-slate-900">
+            @if(!empty($kopBanner))
+                <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-32 object-contain mx-auto">
+            @else
+                <div class="flex items-center justify-between gap-4 py-1">
+                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
+                        @if(!empty($settings['school_logo'] ?? $schoolLogo))
+                            <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
+                        @else
+                            <div class="w-16 h-16 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-sm">
+                                SPMB
+                            </div>
+                        @endif
+                    </div>
+                    <div class="flex-1 text-center font-sans">
+                        @if(!empty($settings['cop_school_name']))
+                            <h2 class="text-base font-black tracking-wide text-slate-900 uppercase my-0.5 whitespace-pre-line">{!! nl2br(e($settings['cop_school_name'])) !!}</h2>
+                        @else
+                            <h2 class="text-xl font-black tracking-wide text-slate-900 uppercase my-0.5">{{ $schoolName }}</h2>
+                        @endif
+                        @if(!empty($settings['cop_school_status']))
+                            <h3 class="text-xs font-black tracking-wider uppercase text-slate-800">{{ $settings['cop_school_status'] }}</h3>
+                        @endif
+                        <p class="text-[9px] text-slate-600 mt-0.5 leading-tight">
+                            Alamat: {{ $settings['cop_school_address'] ?? $schoolAddress }}<br>
+                            Telp/WA: {{ $settings['hotline_panitia'] ?? ($settings['school_phone'] ?? '085290944090') }} | Email: {{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}
+                        </p>
+                    </div>
+                    <div class="w-20 h-20 flex-shrink-0 flex items-center justify-center">
+                        @if(!empty($settings['school_tagline']))
+                            <div class="px-2 py-1 bg-blue-700 text-white font-extrabold text-[10px] rounded text-center">
+                                {{ $settings['school_tagline'] }}
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- JUDUL DOKUMEN -->
+        <div class="text-center my-3">
+            <h1 class="text-base font-bold uppercase tracking-wide underline underline-offset-4 decoration-2 text-slate-950 font-serif">
+                {{ $statementTitle }}
+            </h1>
+        </div>
+
+        <!-- 1. IDENTITAS ORANG TUA -->
+        <div class="mb-2">
+            <p class="text-[12px] font-medium text-slate-900 mb-1">
+                {{ $statementParentHeader }}
+            </p>
+            <table class="w-full text-[12px] font-serif border-collapse">
+                <tr>
+                    <td class="w-44 py-0.5">Nama</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 font-bold uppercase">
+                        @if(!empty($namaAyah) && $namaAyah !== '-')
+                            {{ $namaAyah }}
+                        @elseif(!empty($namaIbu) && $namaIbu !== '-')
+                            {{ $namaIbu }}
+                        @else
+                            <span class="font-normal text-slate-600">.....................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5">Umur</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 text-slate-600">....................................................</td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5 align-top">Alamat Rumah</td>
+                    <td class="w-4 py-0.5 align-top text-center">:</td>
+                    <td class="py-0.5 align-top leading-tight">
+                        @if(!empty($alamatLengkap) && $alamatLengkap !== '-')
+                            {{ $alamatLengkap }}
+                        @else
+                            <span class="text-slate-600">...........................................................................................................................</span><br>
+                            <span class="text-slate-600">...........................................................................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 2. IDENTITAS CALON SISWA -->
+        <div class="mb-2.5">
+            <p class="text-[12px] font-medium text-slate-900 mb-1">
+                {{ $statementStudentHeader }}
+            </p>
+            <table class="w-full text-[12px] font-serif border-collapse">
+                <tr>
+                    <td class="w-44 py-0.5">Nama</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 font-bold uppercase">
+                        @if(!empty($namaSiswa) && $namaSiswa !== '-')
+                            {{ $namaSiswa }}
+                        @else
+                            <span class="font-normal text-slate-600">.....................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5">Tempat tanggal lahir</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5">
+                        @if(!empty($tempatLahir) && $tempatLahir !== '-' && !empty($tanggalLahir) && $tanggalLahir !== '-')
+                            {{ $tempatLahir }}, {{ $tanggalLahir }}
+                        @else
+                            <span class="text-slate-600">.....................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5">Jenis kelamin</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 font-bold">
+                        @php
+                            $jk = $bio?->jenis_kelamin ?? '';
+                        @endphp
+                        @if($jk === 'L')
+                            <strong>L</strong> / <span class="text-slate-400">P</span> (Laki-laki)
+                        @elseif($jk === 'P')
+                            <span class="text-slate-400">L</span> / <strong>P</strong> (Perempuan)
+                        @else
+                            L / P
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5">No PMDK</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 font-bold font-mono text-[12px]">
+                        {{ $registration->registration_number ?? '____________' }}
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5 align-top">Alamat rumah</td>
+                    <td class="w-4 py-0.5 align-top text-center">:</td>
+                    <td class="py-0.5 align-top leading-tight">
+                        @if(!empty($alamatLengkap) && $alamatLengkap !== '-')
+                            {{ $alamatLengkap }}
+                        @else
+                            <span class="text-slate-600">...........................................................................................................................</span><br>
+                            <span class="text-slate-600">...........................................................................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="w-44 py-0.5">Asal Sekolah</td>
+                    <td class="w-4 py-0.5 text-center">:</td>
+                    <td class="py-0.5 font-bold">
+                        @if(!empty($asalSekolah) && $asalSekolah !== '-')
+                            {{ $asalSekolah }}
+                        @else
+                            <span class="font-normal text-slate-600">...................................................................................................</span>
+                        @endif
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- 3. PARAGRAF PENGANTAR PERNYATAAN & TITIPAN KEUANGAN -->
+        <p class="text-[12px] font-serif leading-relaxed text-justify mb-2">
+            {!! nl2br(e($statementIntro)) !!}
+        </p>
+
+        <!-- 4. BUTIR-BUTIR KETENTUAN (1-4) -->
+        <div class="text-[12px] font-serif leading-relaxed mb-2.5 pl-1 space-y-1">
+            @foreach(explode("\n", str_replace("\r", "", $statementRules)) as $ruleLine)
+                @if(trim($ruleLine) !== '')
+                    <div class="flex items-start">
+                        <div class="text-justify leading-relaxed">
+                            {!! strip_tags($ruleLine, '<u><b><strong><i><em><span><strike>') !!}
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+
+        <!-- 5. PARAGRAF PENUTUP -->
+        <p class="text-[12px] font-serif leading-relaxed text-justify mb-4">
+            {!! nl2br(e($statementClosing)) !!}
+        </p>
+
+        <!-- 6. TITIMANGSA & TANDA TANGAN (KIRI: KEPALA SEKOLAH, KANAN: ORANG TUA / WALI) -->
+        <div class="grid grid-cols-2 gap-6 text-[12px] font-serif text-slate-950 mb-4 pt-1">
+            <!-- SEBELAH KIRI: MENGETAHUI KEPALA SEKOLAH -->
+            <div class="text-left pl-2">
+                <div class="invisible mb-1 text-[11px]">Titimangsa Placeholder</div>
+                <p class="font-normal text-slate-900">Mengetahui</p>
+                <p class="font-bold text-slate-950">{{ $statementPrincipalTitle }}</p>
+                
+                <div class="h-16 flex items-end">
+                    <!-- Spasi tanda tangan resmi -->
+                </div>
+
+                <p class="font-bold uppercase tracking-wide text-slate-950">
+                    {{ $statementPrincipalName }}
+                </p>
+            </div>
+
+            <!-- SEBELAH KANAN: ORANG TUA / WALI -->
+            <div class="text-left pl-10">
+                <p class="mb-1 text-slate-900 font-normal">
+                    {{ $statementCity }}, {{ $statementDate }}
+                </p>
+                <p class="font-normal text-slate-900">Yang membuat pernyataan</p>
+                <p class="font-bold text-slate-950">Orang Tua / Wali</p>
+                
+                <div class="h-16 flex items-end">
+                    <!-- Spasi tanda tangan resmi -->
+                </div>
+
+                <p class="font-normal text-slate-700 tracking-wider">
+                    ____________________________
+                </p>
+            </div>
+        </div>
+
+        <!-- 7. BAGIAN CATATAN (NB) -->
+        <div class="border-t border-slate-300 pt-2 text-[11px] font-serif text-slate-900 leading-normal space-y-0.5">
+            <p class="font-bold text-slate-950">NB :</p>
+            @foreach(explode("\n", str_replace("\r", "", $statementNotes)) as $noteLine)
+                @if(trim($noteLine) !== '')
+                    <div class="pl-2">
+                        {!! strip_tags($noteLine, '<u><b><strong><i><em><span>') !!}
+                    </div>
+                @endif
+            @endforeach
+        </div>
+
+    </div>
+
 </body>
 </html>
+

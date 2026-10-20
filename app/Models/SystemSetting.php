@@ -22,6 +22,7 @@ class SystemSetting extends Model
     public static function get(string $key, mixed $default = null): mixed
     {
         $setting = static::where('key', $key)->first();
+
         return $setting ? $setting->value : $default;
     }
 
@@ -52,12 +53,12 @@ class SystemSetting extends Model
     public static function formatWaMessage(?Registration $registration = null, ?string $template = null): string
     {
         $defaultTemplate = static::defaultWaTemplate();
-        $template = !empty($template) ? $template : static::get('wa_message_template', $defaultTemplate);
+        $template = ! empty($template) ? $template : static::get('wa_message_template', $defaultTemplate);
 
         $schoolName = static::get('school_name', 'SMK KARYA NUGRAHA BOYOLALI');
         $studentName = $registration?->biodata?->nama_lengkap ?? $registration?->user?->name ?? 'Calon Siswa';
         $majorName = $registration?->major?->name ?? '-';
-        $industry = !empty($registration?->major?->industry_class) ? " ({$registration->major->industry_class})" : '';
+        $industry = ! empty($registration?->major?->industry_class) ? " ({$registration->major->industry_class})" : '';
         $asalSekolah = $registration?->school?->asal_sekolah ?? '-';
         $statusText = match ($registration?->status) {
             'accepted' => 'Diterima',
@@ -71,8 +72,8 @@ class SystemSetting extends Model
             '[NAMA]' => $studentName,
             '{no_pendaftaran}' => $registration?->registration_number ?? '-',
             '[NO_PENDAFTARAN]' => $registration?->registration_number ?? '-',
-            '{jurusan}' => $majorName . $industry,
-            '[JURUSAN]' => $majorName . $industry,
+            '{jurusan}' => $majorName.$industry,
+            '[JURUSAN]' => $majorName.$industry,
             '{status}' => $statusText,
             '[STATUS]' => $statusText,
             '{asal_sekolah}' => $asalSekolah,
@@ -95,8 +96,8 @@ class SystemSetting extends Model
      */
     public static function formatWaHotlineMessage(?string $template = null): string
     {
-        $defaultTemplate = "Halo Panitia SPMB {sekolah}, saya ingin menanyakan perihal informasi pendaftaran siswa baru.";
-        $template = !empty($template) ? $template : static::get('wa_hotline_template', $defaultTemplate);
+        $defaultTemplate = 'Halo Panitia SPMB {sekolah}, saya ingin menanyakan perihal informasi pendaftaran siswa baru.';
+        $template = ! empty($template) ? $template : static::get('wa_hotline_template', $defaultTemplate);
         $schoolName = static::get('school_name', 'SMK KARYA NUGRAHA BOYOLALI');
 
         return strtr($template, [
@@ -104,5 +105,20 @@ class SystemSetting extends Model
             '[SEKOLAH]' => $schoolName,
         ]);
     }
-}
 
+    /**
+     * Default ketentuan Surat Pernyataan (Lembar 3 Bukti Pendaftaran).
+     */
+    public static function defaultStatementLetterRules(): string
+    {
+        return "1. Lulus SMP / MTs menempati SMK Karya Nugraha Boyolali segera melengkapi segala kekurangan administrasi daftar ulang sesuai dengan program sekolah.\n2. Lulus SMP / MTs tidak menempati SMK Karya Nugraha Boyolali uang titipan tidak kembali.\n3. Tidak Lulus SMP / MTs, uang titipan kembali 100 % dan siap mengundurkan diri.\n4. Besarnya uang titipan Rp .....................................,- ( ......................................................................... ).";
+    }
+
+    /**
+     * Default catatan / NB Surat Pernyataan (Lembar 3 Bukti Pendaftaran).
+     */
+    public static function defaultStatementLetterNotes(): string
+    {
+        return "1. Minimal titipan sebanyak Rp. 500.000,- ( lima ratus ribu rupiah )\n2. Pembayaran Titipan bagi yang diberi kesempatan melanjutkan tanggal _______________ 20___ jam. 08.00 – 12.00 WIB.\n3. Rincian Keuangan dan lain-lain akan diumumkan dikemudian hari.\n4. Khusus yang diterima di TSM, saat Prakerin/PKL siswa wajib/bersedia ditempatkan di wilayah Solo, Yogyakarta dan Semarang.";
+    }
+}

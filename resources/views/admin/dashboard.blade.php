@@ -2630,16 +2630,147 @@
 
                             </div>
 
-                            <!-- TOMBOL SIMPAN PENGATURAN TERPADU -->
-                            <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-200">
-                                <a href="{{ route('admin.dashboard') }}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">
-                                    Kembali ke Dashboard
-                                </a>
-                                <button type="submit" class="px-7 py-3 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-xl font-black text-xs transition flex items-center gap-2 shadow-lg transform hover:-translate-y-0.5">
-                                    <i class="fa-solid fa-cloud-arrow-up text-base"></i> Simpan Seluruh Pengaturan SPMB
-                                </button>
+                        </div>
+                    </div>
+
+                    <!-- ================= 6. FORMAT SURAT PERNYATAAN (LEMBAR KE-3 CETAK BUKTI PENDAFTAR) ================= -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 px-6 py-4 text-white flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-lg bg-white/20 flex items-center justify-center text-lg shadow-xs">
+                                    <i class="fa-solid fa-file-signature text-white"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-base font-bold">6. Format Surat Pernyataan (Lembar Ke-3 Cetak Bukti Pendaftar)</h2>
+                                    <p class="text-xs text-amber-100">Kustomisasi format penulisan surat pernyataan orang tua, 4 poin ketentuan titipan keuangan, dan catatan (NB)</p>
+                                </div>
+                            </div>
+                            <span class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/15 border border-white/20 text-white backdrop-blur-xs">
+                                <i class="fa-solid fa-print text-amber-200"></i> Lembar Ke-3 Cetak F4
+                            </span>
+                        </div>
+
+                        <div class="p-6 space-y-6">
+                            
+                            <!-- INFORMASI PANDUAN FORMAT -->
+                            <div class="p-4 bg-amber-50/70 border border-amber-200 rounded-xl flex items-start gap-3">
+                                <i class="fa-solid fa-circle-info text-amber-600 text-lg mt-0.5"></i>
+                                <div class="text-xs text-amber-900 leading-relaxed space-y-1">
+                                    <p class="font-bold">Format Dokumen Resmi Lembar Ketiga:</p>
+                                    <p>Format penulisan di bawah ini akan otomatis dicetak pada <strong>Lembar Ke-3 Bukti Pendaftaran Siswa</strong> (Surat Pernyataan Orang Tua / Wali). Seluruh data identitas siswa dan orang tua akan otomatis terisi dari formulir registrasi yang tersimpan di sistem.</p>
+                                </div>
                             </div>
 
+                            <!-- ROW 1: JUDUL SURAT & TEKS PEMBUKA IDENTITAS -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Judul Surat Pernyataan *</label>
+                                    <input type="text" name="statement_letter_title" value="{{ $settings['statement_letter_title'] ?? 'SURAT PERNYATAAN' }}" required placeholder="SURAT PERNYATAAN" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold uppercase focus:bg-white focus:outline-none focus:border-amber-500">
+                                    <span class="text-[10px] text-slate-400 mt-1 block">Tampil di bagian atas bergaris bawah</span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Teks Pembuka Identitas Orang Tua</label>
+                                    <input type="text" name="statement_letter_parent_header" value="{{ $settings['statement_letter_parent_header'] ?? 'Yang bertanda tangan dibawah ini, saya orang tua :' }}" placeholder="Yang bertanda tangan dibawah ini, saya orang tua :" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                                    <span class="text-[10px] text-slate-400 mt-1 block">Teks pengantar nama, umur & alamat orang tua</span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Teks Pembuka Identitas Siswa</label>
+                                    <input type="text" name="statement_letter_student_header" value="{{ $settings['statement_letter_student_header'] ?? 'Sebagai orang tua/ wali murid dari calon siswa' }}" placeholder="Sebagai orang tua/ wali murid dari calon siswa" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-amber-500">
+                                    <span class="text-[10px] text-slate-400 mt-1 block">Teks pengantar nama, TTL, JK, No PMDK & sekolah</span>
+                                </div>
+                            </div>
+
+                            <!-- ROW 2: KALIMAT PENGANTAR / PERSETUJUAN TITIP KEUANGAN -->
+                            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-slate-800">
+                                        Kalimat Pengantar & Persetujuan Titipan Administrasi Keuangan
+                                    </label>
+                                    <span class="text-[11px] text-slate-500">
+                                        Gunakan variabel: <code class="bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-mono font-bold cursor-pointer" onclick="insertStatementTag('{tahun_pelajaran}')" title="Klik untuk menyisipkan">{tahun_pelajaran}</code>, <code class="bg-amber-100 text-amber-800 px-1 py-0.5 rounded font-mono font-bold cursor-pointer" onclick="insertStatementTag('{sekolah}')" title="Klik untuk menyisipkan">{sekolah}</code>
+                                    </span>
+                                </div>
+                                <textarea id="setting-statement-intro" name="statement_letter_intro" rows="3" class="w-full p-3 bg-white border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:border-amber-500 leading-relaxed">{{ $settings['statement_letter_intro'] ?? 'Sehubungan dengan diberikannya kesempatan kepada anak saya sebagai calon siswa Jalur PMDK SMK Karya Nugraha Tahun {tahun_pelajaran}, saya menyatakan setuju dan titip administrasi keuangan dengan ketentuan apabila anak saya:' }}</textarea>
+                                <p class="text-[11px] text-slate-500 italic">
+                                    * Variabel <code>{tahun_pelajaran}</code> akan otomatis diisi tahun ajaran aktif (contoh: 2027 / 2028).
+                                </p>
+                            </div>
+
+                            <!-- ROW 3: BUTIR-BUTIR KETENTUAN PERNYATAAN (1-4) -->
+                            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-800">
+                                            Butir-Butir Ketentuan Surat Pernyataan (Tampil Sebagai Poin 1 s/d 4)
+                                        </label>
+                                        <p class="text-[11px] text-slate-500 mt-0.5">Tulis setiap butir ketentuan per baris. Anda dapat menggunakan tag <code>&lt;u&gt;garis bawah&lt;/u&gt;</code> atau <code>&lt;b&gt;tebal&lt;/b&gt;</code> untuk penegasan kata.</p>
+                                    </div>
+                                    <button type="button" onclick="resetDefaultStatementRules()" class="text-[11px] font-bold text-amber-700 hover:text-amber-800 transition flex items-center gap-1 cursor-pointer">
+                                        <i class="fa-solid fa-rotate-left"></i> Reset Default Poin Ketentuan
+                                    </button>
+                                </div>
+                                <textarea id="setting-statement-rules" name="statement_letter_rules" rows="6" class="w-full p-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:border-amber-500 leading-relaxed">{{ $settings['statement_letter_rules'] ?? \App\Models\SystemSetting::defaultStatementLetterRules() }}</textarea>
+                            </div>
+
+                            <!-- ROW 4: KALIMAT PENUTUP -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1">Kalimat Penutup Surat Pernyataan</label>
+                                <textarea name="statement_letter_closing" rows="2" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-amber-500 leading-relaxed">{{ $settings['statement_letter_closing'] ?? 'Demikian pernyataan ini kami buat, dengan penuh kesadaran dan tanpa paksaan dari pihak manapun, untuk dapat digunakan sebagaimana mestinya.' }}</textarea>
+                            </div>
+
+                            <!-- ROW 5: TITIMANGSA & PEJABAT MENGETAHUI -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Kota Titimangsa Surat</label>
+                                    <input type="text" name="statement_letter_city" value="{{ $settings['statement_letter_city'] ?? 'Boyolali' }}" placeholder="Boyolali" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Format Tanggal TTD</label>
+                                    <input type="text" name="statement_letter_date" value="{{ $settings['statement_letter_date'] ?? '_____________ 20….' }}" placeholder="_____________ 20…." class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold focus:outline-none focus:border-amber-500">
+                                    <span class="text-[10px] text-slate-400 mt-0.5 block">Format tanggal kosong / terisi</span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Jabatan Mengetahui (Kiri)</label>
+                                    <input type="text" name="statement_letter_principal_title" value="{{ $settings['statement_letter_principal_title'] ?? 'Kepala Sekolah' }}" placeholder="Kepala Sekolah" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold focus:outline-none focus:border-amber-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-800 mb-1">Nama Kepala Sekolah / Pejabat *</label>
+                                    <input type="text" name="statement_letter_principal_name" value="{{ $settings['statement_letter_principal_name'] ?? 'NUR WAKHID ROMDHONI, SE' }}" required placeholder="NUR WAKHID ROMDHONI, SE" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase focus:outline-none focus:border-amber-500">
+                                </div>
+                            </div>
+
+                            <!-- ROW 6: CATATAN TAMBAHAN (NB) -->
+                            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-800">
+                                            Catatan Tambahan Surat Pernyataan (Bagian NB)
+                                        </label>
+                                        <p class="text-[11px] text-slate-500 mt-0.5">Berisi butir-butir ketentuan khusus seperti batas nominal titipan, jadwal waktu, penempatan prakerin TSM, dsb.</p>
+                                    </div>
+                                    <button type="button" onclick="resetDefaultStatementNotes()" class="text-[11px] font-bold text-amber-700 hover:text-amber-800 transition flex items-center gap-1 cursor-pointer">
+                                        <i class="fa-solid fa-rotate-left"></i> Reset Default NB
+                                    </button>
+                                </div>
+                                <textarea id="setting-statement-notes" name="statement_letter_notes" rows="5" class="w-full p-3 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:border-amber-500 leading-relaxed">{{ $settings['statement_letter_notes'] ?? \App\Models\SystemSetting::defaultStatementLetterNotes() }}</textarea>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <!-- TOMBOL SIMPAN PENGATURAN TERPADU -->
+                    <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-2 text-xs text-slate-600 font-medium">
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+                            <span>Seluruh pengaturan logo, hotline, TTD panitia, kop surat, dan surat pernyataan akan tersimpan sekaligus.</span>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                            <a href="{{ route('admin.dashboard') }}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">
+                                Batal
+                            </a>
+                            <button type="submit" class="px-7 py-3 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-xl font-black text-xs transition flex items-center gap-2 shadow-lg transform hover:-translate-y-0.5 cursor-pointer">
+                                <i class="fa-solid fa-cloud-arrow-up text-base"></i> Simpan Seluruh Pengaturan SPMB
+                            </button>
                         </div>
                     </div>
 
@@ -4944,6 +5075,29 @@
             }
 
             previewBox.textContent = text;
+        }
+
+        function insertStatementTag(tag) {
+            const textarea = document.getElementById('setting-statement-intro');
+            if (!textarea) return;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            textarea.value = text.substring(0, start) + tag + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + tag.length;
+        }
+
+        function resetDefaultStatementRules() {
+            const textarea = document.getElementById('setting-statement-rules');
+            if (!textarea) return;
+            textarea.value = @json(\App\Models\SystemSetting::defaultStatementLetterRules());
+        }
+
+        function resetDefaultStatementNotes() {
+            const textarea = document.getElementById('setting-statement-notes');
+            if (!textarea) return;
+            textarea.value = @json(\App\Models\SystemSetting::defaultStatementLetterNotes());
         }
 
         document.addEventListener('DOMContentLoaded', function() {

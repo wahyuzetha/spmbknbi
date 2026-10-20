@@ -493,6 +493,19 @@ class DashboardController extends Controller
             'cop_school_address' => 'nullable|string|max:500',
             'cop_school_contact' => 'nullable|string|max:255',
 
+            // Format Surat Pernyataan (Lembar 3)
+            'statement_letter_title' => 'nullable|string|max:255',
+            'statement_letter_parent_header' => 'nullable|string|max:255',
+            'statement_letter_student_header' => 'nullable|string|max:255',
+            'statement_letter_intro' => 'nullable|string',
+            'statement_letter_rules' => 'nullable|string',
+            'statement_letter_closing' => 'nullable|string',
+            'statement_letter_city' => 'nullable|string|max:100',
+            'statement_letter_date' => 'nullable|string|max:100',
+            'statement_letter_principal_title' => 'nullable|string|max:100',
+            'statement_letter_principal_name' => 'nullable|string|max:255',
+            'statement_letter_notes' => 'nullable|string',
+
             // File Uploads
             'school_logo' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
             'chairman_signature' => 'nullable|image|mimes:jpeg,png,jpg,webp,svg|max:2048',
@@ -524,6 +537,18 @@ class DashboardController extends Controller
             'cop_school_status' => 'cop_surat',
             'cop_school_address' => 'cop_surat',
             'cop_school_contact' => 'cop_surat',
+
+            'statement_letter_title' => 'statement_letter',
+            'statement_letter_parent_header' => 'statement_letter',
+            'statement_letter_student_header' => 'statement_letter',
+            'statement_letter_intro' => 'statement_letter',
+            'statement_letter_rules' => 'statement_letter',
+            'statement_letter_closing' => 'statement_letter',
+            'statement_letter_city' => 'statement_letter',
+            'statement_letter_date' => 'statement_letter',
+            'statement_letter_principal_title' => 'statement_letter',
+            'statement_letter_principal_name' => 'statement_letter',
+            'statement_letter_notes' => 'statement_letter',
         ];
 
         foreach ($textFields as $field => $group) {

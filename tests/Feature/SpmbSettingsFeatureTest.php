@@ -133,14 +133,14 @@ class SpmbSettingsFeatureTest extends TestCase
 
         // Tahun ajaran sebelumnya otomatis dinonaktifkan
         if ($activeCurrent) {
-            $this->assertFalse((bool)$activeCurrent->fresh()->is_active);
+            $this->assertFalse((bool) $activeCurrent->fresh()->is_active);
 
             // Coba aktifkan kembali tahun ajaran lama
             $switchResponse = $this->actingAs($admin)->post(route('admin.academicYears.activate', $activeCurrent->id));
             $switchResponse->assertRedirect(route('admin.dashboard', ['view' => 'pengaturan']));
 
-            $this->assertTrue((bool)$activeCurrent->fresh()->is_active);
-            $this->assertFalse((bool)$newYear->fresh()->is_active);
+            $this->assertTrue((bool) $activeCurrent->fresh()->is_active);
+            $this->assertFalse((bool) $newYear->fresh()->is_active);
         }
 
         // Hapus tahun ajaran baru karena belum ada pendaftar
@@ -318,7 +318,7 @@ class SpmbSettingsFeatureTest extends TestCase
         // 2. Akses Bukti Pendaftaran oleh Admin
         $resAdmin = $this->actingAs($admin)->get(route('admin.spmb.printCard', $registration->id));
         $resAdmin->assertStatus(200);
-        
+
         // Halaman 1: Ukuran Kertas F4, Judul Dokumen, Data Siswa
         $resAdmin->assertSee('215mm 330mm', false); // Standar Kertas F4 / Folio
         $resAdmin->assertSee('Plus Jakarta Sans', false);
@@ -373,8 +373,8 @@ class SpmbSettingsFeatureTest extends TestCase
         $this->assertNotNull($admin);
 
         // 1. Simpan template WhatsApp kustom lewat route pengaturan SPMB
-        $customTemplate = "Halo Sdr. {nama}, Anda terdaftar di {sekolah} dg No {no_pendaftaran} jurusan {jurusan} status {status} asal {asal_sekolah}. Login: user={username} pass={password}. Hotline: {hotline}";
-        $customHotline = "Halo Helpdesk {sekolah}, saya butuh info pendaftaran.";
+        $customTemplate = 'Halo Sdr. {nama}, Anda terdaftar di {sekolah} dg No {no_pendaftaran} jurusan {jurusan} status {status} asal {asal_sekolah}. Login: user={username} pass={password}. Hotline: {hotline}';
+        $customHotline = 'Halo Helpdesk {sekolah}, saya butuh info pendaftaran.';
 
         $response = $this->actingAs($admin)->post(route('admin.settings.spmb.update'), [
             'school_name' => 'SMK KARYA NUGRAHA BOYOLALI',
@@ -453,5 +453,51 @@ class SpmbSettingsFeatureTest extends TestCase
             $panitiaView->assertSee('Budi Santoso');
             $panitiaView->assertSee('https://wa.me/6281234567890?text=', false);
         }
+    }
+
+    public function test_admin_dapat_mengatur_format_surat_pernyataan_lembar_ketiga_dan_tercermin_saat_cetak()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->assertNotNull($admin);
+
+        // 1. Submit perubahan format surat pernyataan dari form admin
+        $payload = [
+            'statement_letter_title' => 'SURAT PERNYATAAN ORANG TUA / WALI SISWA',
+            'statement_letter_parent_header' => 'Yang bertanda tangan di bawah ini, selaku orang tua:',
+            'statement_letter_student_header' => 'Sebagai wali sah dari calon peserta didik baru:',
+            'statement_letter_intro' => 'Dengan ini menyatakan bersedia menitipkan administrasi keuangan tahun ajaran {tahun_pelajaran} di {sekolah}.',
+            'statement_letter_rules' => "1. Lulus seleksi segera melengkapi administrasi daftar ulang.\n2. Lulus tapi tidak mendaftar ulang <u>titipan hangus</u>.\n3. Tidak lulus uang kembali 100%.\n4. Besarnya titipan Rp 500.000,-",
+            'statement_letter_closing' => 'Demikian surat kesepakatan ini dibuat dengan sukarela tanpa paksaan.',
+            'statement_letter_city' => 'Boyolali Kota',
+            'statement_letter_date' => '25 Juli 2027',
+            'statement_letter_principal_title' => 'Kepala Sekolah Resmi',
+            'statement_letter_principal_name' => 'NUR WAKHID ROMDHONI, SE',
+            'statement_letter_notes' => "1. Titipan minimal Rp 500.000,-\n2. Jam pembayaran 08.00 - 12.00 WIB.\n3. PKL siap ditempatkan di Solo, Jogja, Semarang.",
+        ];
+
+        $response = $this->actingAs($admin)->post(route('admin.settings.spmb.update'), $payload);
+        $response->assertRedirect(route('admin.dashboard', ['view' => 'pengaturan']));
+
+        // 2. Pastikan setting tersimpan di database
+        $this->assertEquals('SURAT PERNYATAAN ORANG TUA / WALI SISWA', SystemSetting::get('statement_letter_title'));
+        $this->assertEquals('NUR WAKHID ROMDHONI, SE', SystemSetting::get('statement_letter_principal_name'));
+        $this->assertEquals('Boyolali Kota', SystemSetting::get('statement_letter_city'));
+
+        // 3. Ambil salah satu pendaftaran pendaftar untuk simulasi cetak bukti pendaftaran
+        $registration = Registration::first();
+        $this->assertNotNull($registration);
+
+        $printResponse = $this->actingAs($admin)->get(route('admin.spmb.printCard', $registration->id));
+        $printResponse->assertStatus(200);
+
+        // Assert lembar 3 (Surat Pernyataan) memuat judul baru, isi pengaturan, dan format resmi
+        $printResponse->assertSee('SURAT PERNYATAAN ORANG TUA / WALI SISWA', false);
+        $printResponse->assertSee('Yang bertanda tangan di bawah ini, selaku orang tua:', false);
+        $printResponse->assertSee('Sebagai wali sah dari calon peserta didik baru:', false);
+        $printResponse->assertSee('NUR WAKHID ROMDHONI, SE', false);
+        $printResponse->assertSee('Boyolali Kota, 25 Juli 2027', false);
+        $printResponse->assertSee('Kepala Sekolah Resmi', false);
+        $printResponse->assertSee('titipan hangus', false);
+        $printResponse->assertSee('3 Halaman (Termasuk Lembar Surat Pernyataan)', false);
     }
 }
