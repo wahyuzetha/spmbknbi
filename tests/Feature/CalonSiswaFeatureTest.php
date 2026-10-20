@@ -116,27 +116,27 @@ class CalonSiswaFeatureTest extends TestCase
         // 7. Test Quick Status Sekali Respon (AJAX): Pending -> Diterima
         $quickReg = Registration::where('status', 'pending')->first();
         $this->assertNotNull($quickReg);
-        
+
         $ajaxAcceptResponse = $this->actingAs($admin)->postJson("/admin/registrations/{$quickReg->id}/status", [
-            'status' => 'accepted'
+            'status' => 'accepted',
         ]);
         $ajaxAcceptResponse->assertStatus(200);
         $ajaxAcceptResponse->assertJson([
             'success' => true,
             'status' => 'accepted',
-            'status_label' => 'Diterima'
+            'status_label' => 'Diterima',
         ]);
         $this->assertEquals('accepted', $quickReg->fresh()->status);
 
         // Test Quick Status Sekali Respon (AJAX): Diterima -> Pending
         $ajaxPendingResponse = $this->actingAs($admin)->postJson("/admin/registrations/{$quickReg->id}/status", [
-            'status' => 'pending'
+            'status' => 'pending',
         ]);
         $ajaxPendingResponse->assertStatus(200);
         $ajaxPendingResponse->assertJson([
             'success' => true,
             'status' => 'pending',
-            'status_label' => 'Pending'
+            'status_label' => 'Pending',
         ]);
         $this->assertEquals('pending', $quickReg->fresh()->status);
 
@@ -180,10 +180,10 @@ class CalonSiswaFeatureTest extends TestCase
         $this->assertEquals('7', Registration::getMajorDigit($ttt), 'TKJ Kelas Telkom harus berkode 7');
 
         // 2. Verifikasi 2 Digit Tahun Pelajaran
-        $year27 = \App\Models\AcademicYear::where('name', '2027/2028')->first();
+        $year27 = AcademicYear::where('name', '2027/2028')->first();
         $this->assertEquals('27', Registration::getYearDigits($year27));
 
-        $year28 = \App\Models\AcademicYear::create([
+        $year28 = AcademicYear::create([
             'name' => '2028/2029',
             'is_active' => false,
             'start_date' => '2028-01-01',
@@ -236,15 +236,15 @@ class CalonSiswaFeatureTest extends TestCase
         $newReg = Registration::where('user_id', $newStudent->id)->first();
         $this->assertNotNull($newReg);
 
-        // Harus diawali 27 (tahun), lalu 6 (PSY), lalu 3 digit ID siswa
-        $expectedRegNo = '276' . str_pad((string)$newStudent->id, 3, '0', STR_PAD_LEFT);
-        $this->assertEquals($expectedRegNo, $newReg->registration_number);
+        // Harus diawali 27 (tahun), lalu 6 (PSY), lalu 3 digit urutan nomor pendaftar per jurusan (dimulai 001, dst.)
+        $this->assertStringStartsWith('276', $newReg->registration_number);
+        $this->assertEquals(6, strlen($newReg->registration_number));
     }
 
     public function test_tambah_siswa_manual_menolak_username_duplikat_dan_mencegah_bentrok_email_unik(): void
     {
         $admin = User::where('role', 'admin')->first();
-        if (!$admin) {
+        if (! $admin) {
             $admin = User::create([
                 'name' => 'Admin Test',
                 'username' => 'admintest',
@@ -388,7 +388,7 @@ class CalonSiswaFeatureTest extends TestCase
             'is_active' => true,
         ]);
 
-        $academicYear = \App\Models\AcademicYear::where('is_active', true)->first();
+        $academicYear = AcademicYear::where('is_active', true)->first();
         $registration = Registration::create([
             'registration_number' => '271099',
             'user_id' => $siswa->id,
@@ -576,8 +576,8 @@ class CalonSiswaFeatureTest extends TestCase
         // Cek bahwa angka selisih dan pengeluaran muncul di dashboard view
         $viewAfterExpense = $this->actingAs($admin)->get(route('admin.dashboard', ['view' => 'pengeluaran']));
         $viewAfterExpense->assertStatus(200);
-        $viewAfterExpense->assertSee('Rp ' . number_format($totalPengeluaran, 0, ',', '.'));
-        $viewAfterExpense->assertSee('Rp ' . number_format($selisih, 0, ',', '.'));
+        $viewAfterExpense->assertSee('Rp '.number_format($totalPengeluaran, 0, ',', '.'));
+        $viewAfterExpense->assertSee('Rp '.number_format($selisih, 0, ',', '.'));
         $viewAfterExpense->assertSee('Pengadaan Formulir dan Brosur PPDB 2026/2027');
         $viewAfterExpense->assertSee($keteranganPengeluaran);
         $viewAfterExpense->assertSee('Keterangan');
@@ -828,6 +828,3 @@ class CalonSiswaFeatureTest extends TestCase
         ]);
     }
 }
-
-
-

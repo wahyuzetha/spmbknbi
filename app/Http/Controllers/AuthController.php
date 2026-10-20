@@ -85,7 +85,7 @@ class AuthController extends Controller
 
             // 2. Buat Pendaftaran
             $academicYear = AcademicYear::where('is_active', true)->first();
-            $registrationNumber = Registration::generateNumber($validated['major_id'], $user->id, $academicYear);
+            $registrationNumber = Registration::generateNumber($validated['major_id'], null, $academicYear);
 
             $registration = Registration::create([
                 'registration_number' => $registrationNumber,
@@ -151,7 +151,7 @@ class AuthController extends Controller
                         'phone' => $user->phone,
                         'raw_password' => $validated['password'],
                         'registration_number' => $registrationNumber,
-                    ]
+                    ],
                 ]);
             }
 
@@ -170,11 +170,11 @@ class AuthController extends Controller
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+                    'message' => 'Terjadi kesalahan sistem: '.$e->getMessage(),
                 ], 500);
             }
 
-            return back()->withInput()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Gagal mendaftar: '.$e->getMessage());
         }
     }
 

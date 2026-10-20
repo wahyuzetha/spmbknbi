@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Registration extends Model
 {
@@ -104,9 +105,9 @@ class Registration extends Model
     }
 
     /**
-     * Generate Nomor Pendaftaran SPMB 6 digit sesuai logika 3 bagian:
-     * - Bagian 1 (2 digit): Tahun Pelajaran aktif (contoh: 2027/2028 -> 27, ganti tahun otomatis ganti)
-     * - Bagian 2 (1 digit): Urutan Kode Jurusan:
+     * Generate Nomor Pendaftaran SPMB 6 digit terstruktur per jurusan:
+     * - Bagian 1 (2 digit): Tahun Pelajaran aktif (contoh: 2027/2028 -> '27', ganti tahun otomatis ganti)
+     * - Bagian 2 (1 digit): Kode Urutan Jurusan:
      *     1 = Teknik Kendaraan Ringan (TKR)
      *     2 = Teknik Body Otomotif (TBO)
      *     3 = Teknik Sepeda Motor (TSM)
@@ -114,11 +115,14 @@ class Registration extends Model
      *     5 = Teknik Komputer dan Tata Busana (TKJ+)
      *     6 = Perbankan Syariah (PSY)
      *     7 = Teknik Komputer Jaringan (Kelas Telkom / TTT)
-     * - Bagian 3 (3 digit): Urutan ID siswa di database (contoh: 001 s/d 012). Saat ID di-reset kembali ke 001.
+     * - Bagian 3 (3 digit): Nomor Urut Pendaftar PER JURUSAN yang selalu diawali 001, 002, 003, dst.
      *
-     * Contoh: 276012
+     * Contoh:
+     * - Jurusan TKR (1) calon siswa 1: 271001, siswa 2: 271002
+     * - Jurusan TBO (2) calon siswa 1: 272001, siswa 2: 272002
+     * - Jurusan TSM (3) calon siswa 1: 273001, siswa 2: 273002
      */
-    public static function generateNumber($major = null, ?int $studentId = null, $academicYear = null, ?int $ignoreRegistrationId = null): string
+    public static function generateNumber($major = null, ?int $customSequence = null, $academicYear = null, ?int $ignoreRegistrationId = null): string
     {
         // 1. Digit Tahun Pelajaran (2 digit)
         $yearDigits = static::getYearDigits($academicYear);
@@ -126,27 +130,47 @@ class Registration extends Model
         // 2. Digit Urutan Jurusan (1 digit)
         $majorDigit = static::getMajorDigit($major);
 
-        // 3. Digit Urutan ID Siswa (3 digit)
-        if ($studentId) {
-            $seq = (int)$studentId;
-        } else {
-            $latestId = Siswa::max('id') ?? 0;
-            $seq = $latestId + 1;
-        }
-        $seqDigits = str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+        // Prefix 3 digit (contoh: '271' untuk TKR 2027/2028)
+        $prefix = $yearDigits.$majorDigit;
 
-        $regNumber = $yearDigits . $majorDigit . $seqDigits;
+        // 3. Digit Urutan Pendaftar PER JURUSAN (3 digit, diawali 001)
+        if ($customSequence && $customSequence > 0) {
+            $nextSeq = $customSequence;
+        } else {
+            // Ambil seluruh nomor pendaftaran yang memiliki prefix tahun & jurusan ini
+            $existingNumbers = static::query()
+                ->where('registration_number', 'like', $prefix.'%')
+                ->when($ignoreRegistrationId, fn ($q) => $q->where('id', '!=', $ignoreRegistrationId))
+                ->pluck('registration_number');
+
+            $maxSeq = 0;
+            foreach ($existingNumbers as $num) {
+                // Ambil digit setelah prefix 3 karakter
+                $suffix = substr((string) $num, strlen($prefix));
+                if (is_numeric($suffix)) {
+                    $val = (int) $suffix;
+                    if ($val > $maxSeq) {
+                        $maxSeq = $val;
+                    }
+                }
+            }
+
+            $nextSeq = $maxSeq + 1;
+        }
+
+        $seqDigits = str_pad((string) $nextSeq, 3, '0', STR_PAD_LEFT);
+        $candidate = $prefix.$seqDigits;
 
         // Pastikan unik jika nomor sudah ada sebelumnya
-        while (static::where('registration_number', $regNumber)
-            ->when($ignoreRegistrationId, fn($q) => $q->where('id', '!=', $ignoreRegistrationId))
+        while (static::where('registration_number', $candidate)
+            ->when($ignoreRegistrationId, fn ($q) => $q->where('id', '!=', $ignoreRegistrationId))
             ->exists()) {
-            $seq++;
-            $seqDigits = str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
-            $regNumber = $yearDigits . $majorDigit . $seqDigits;
+            $nextSeq++;
+            $seqDigits = str_pad((string) $nextSeq, 3, '0', STR_PAD_LEFT);
+            $candidate = $prefix.$seqDigits;
         }
 
-        return $regNumber;
+        return $candidate;
     }
 
     /**
@@ -167,29 +191,21 @@ class Registration extends Model
             return $oldNumber;
         }
 
-        // Ambil nomor urut siswa dari nomor pendaftaran lama (3 digit terakhir jika ada)
-        $seq = null;
-        if (strlen($oldNumber) >= 4) {
-            $seq = (int) substr($oldNumber, 3);
-        }
-        if (!$seq || $seq <= 0) {
-            $seq = $this->user_id;
-        }
-
-        $newNumber = static::generateNumber($newMajor, $seq, $this->academic_year_id, $this->id);
+        // Ambil nomor urut pendaftaran baru di jurusan baru
+        $newNumber = static::generateNumber($newMajor, null, $this->academic_year_id, $this->id);
 
         // Pindahkan berkas dokumen jika nomor pendaftaran berubah
         if ($oldNumber && $oldNumber !== $newNumber) {
-            $oldDir = 'documents/' . $oldNumber;
-            $newDir = 'documents/' . $newNumber;
+            $oldDir = 'documents/'.$oldNumber;
+            $newDir = 'documents/'.$newNumber;
 
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($oldDir)) {
-                $files = \Illuminate\Support\Facades\Storage::disk('public')->allFiles($oldDir);
+            if (Storage::disk('public')->exists($oldDir)) {
+                $files = Storage::disk('public')->allFiles($oldDir);
                 foreach ($files as $file) {
-                    $dest = str_replace($oldDir . '/', $newDir . '/', $file);
-                    \Illuminate\Support\Facades\Storage::disk('public')->move($file, $dest);
+                    $dest = str_replace($oldDir.'/', $newDir.'/', $file);
+                    Storage::disk('public')->move($file, $dest);
                 }
-                \Illuminate\Support\Facades\Storage::disk('public')->deleteDirectory($oldDir);
+                Storage::disk('public')->deleteDirectory($oldDir);
             }
 
             // Perbarui path dokumen di database
@@ -222,7 +238,7 @@ class Registration extends Model
             $academicYear = AcademicYear::find($academicYear);
         }
 
-        if (!$academicYear) {
+        if (! $academicYear) {
             $academicYear = AcademicYear::where('is_active', true)->first();
         }
 
@@ -259,7 +275,7 @@ class Registration extends Model
             $major = Major::find($major);
         }
 
-        if (!$major) {
+        if (! $major) {
             return '1';
         }
 
@@ -302,6 +318,6 @@ class Registration extends Model
             return '4';
         }
 
-        return (string)($major->id ?? '1');
+        return (string) ($major->id ?? '1');
     }
 }
