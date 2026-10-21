@@ -3,10 +3,10 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DatabaseViewerController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Bendahara\DashboardController as BendaharaDashboardController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Murid\DashboardController as MuridDashboardController;
 use App\Http\Controllers\Panitia\DashboardController as PanitiaDashboardController;
-use App\Http\Controllers\Bendahara\DashboardController as BendaharaDashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -15,8 +15,9 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// 1. Landing Page
+// 1. Landing Page & Detail Jurusan
 Route::get('/', [LandingController::class, 'index'])->name('home');
+Route::get('/jurusan/{slug}', [LandingController::class, 'majorDetail'])->name('jurusan.detail');
 
 // 2. Authentication & Registration Routes
 Route::get('/daftar', [AuthController::class, 'showRegisterForm'])->name('daftar');
@@ -47,6 +48,7 @@ Route::middleware('auth')->get('/dashboard', function () {
     if ($user->isPanitia()) {
         return redirect()->route('panitia.dashboard');
     }
+
     return redirect()->route('murid.dashboard');
 })->name('dashboard');
 
@@ -64,6 +66,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/sekolah/jurusan/{id}/update', [AdminDashboardController::class, 'updateMajor'])->name('sekolah.jurusan.update');
     Route::post('/sekolah/jurusan/{id}/industry-class', [AdminDashboardController::class, 'updateIndustryClass'])->name('sekolah.jurusan.updateIndustryClass');
     Route::post('/sekolah/jurusan/{id}/delete', [AdminDashboardController::class, 'deleteMajor'])->name('sekolah.jurusan.delete');
+    Route::post('/sekolah/jurusan/{id}/content', [AdminDashboardController::class, 'updateMajorContent'])->name('sekolah.jurusan.updateContent');
+    Route::post('/sekolah/jurusan/{id}/gallery/upload', [AdminDashboardController::class, 'uploadMajorGallery'])->name('sekolah.jurusan.uploadGallery');
+    Route::post('/sekolah/jurusan/gallery/{galleryId}/delete', [AdminDashboardController::class, 'deleteMajorGallery'])->name('sekolah.jurusan.deleteGallery');
 
     // CRUD Data Pengguna (Sesuai Gambar Referensi User)
     Route::post('/sekolah/pengguna/store', [AdminDashboardController::class, 'storeUser'])->name('sekolah.pengguna.store');

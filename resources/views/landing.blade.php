@@ -372,7 +372,9 @@
                             </div>
 
                             <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                {{ $major->name }}
+                                <a href="{{ route('jurusan.detail', $major->slug ?: $major->id) }}" class="hover:underline">
+                                    {{ $major->name }}
+                                </a>
                             </h3>
 
                             @if($major->industry_class)
@@ -386,11 +388,15 @@
                             </p>
                         </div>
 
-                        <div class="mt-5 pt-4 border-t border-slate-200/60 flex items-center justify-between">
-                            <span class="text-xs font-medium text-slate-500">Status Peminatan:</span>
-                            <span class="text-xs font-bold text-blue-600 flex items-center gap-1">
-                                <i class="fa-solid fa-circle-check text-emerald-500 text-[10px]"></i> Terbuka
+                        <div class="mt-5 pt-4 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check text-[10px]"></i> {{ $major->remaining_quota }} Kursi Tersisa
                             </span>
+                            <a href="{{ route('jurusan.detail', $major->slug ?: $major->id) }}" 
+                               class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition transform hover:-translate-y-0.5">
+                                <span>Lihat Detail</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </a>
                         </div>
                     </div>
                 @endforeach

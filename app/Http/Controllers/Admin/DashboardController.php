@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AcademicYear;
 use App\Models\Expense;
 use App\Models\Major;
+use App\Models\MajorGallery;
 use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\Siswa;
@@ -174,6 +175,13 @@ class DashboardController extends Controller
         $currentView = $request->get('view', 'dashboard');
         $profileTab = $request->get('tab', 'profile');
 
+        // 8. Konten & Media Jurusan (Foto Praktikum, Video, Keunggulan)
+        $selectedMajorId = $request->get('major_id');
+        $selectedMajor = null;
+        if ($currentView === 'konten_jurusan') {
+            $selectedMajor = Major::with('gallery')->find($selectedMajorId) ?? Major::with('gallery')->first();
+        }
+
         return view('admin.dashboard', compact(
             'academicYear',
             'allAcademicYears',
@@ -207,7 +215,8 @@ class DashboardController extends Controller
             'chartSchoolCounts',
             'totalUniqueSchools',
             'currentView',
-            'profileTab'
+            'profileTab',
+            'selectedMajor'
         ));
     }
 
@@ -301,6 +310,141 @@ class DashboardController extends Controller
         $major->delete();
 
         return back()->with('success', "Jurusan {$name} berhasil dihapus.");
+    }
+
+    /**
+     * =========================================================================
+     * FITUR KELOLA KONTEN & MEDIA JURUSAN (Video, Keunggulan, Foto Praktikum)
+     * =========================================================================
+     */
+
+    /**
+     * Update Konten Detail Jurusan (Video, Tagline, Kaprog, Deskripsi, Keunggulan, Karir, dsb).
+     */
+    public function updateMajorContent(Request $request, $id)
+    {
+        $major = Major::findOrFail($id);
+
+        $validated = $request->validate([
+            'tagline' => 'nullable|string|max:255',
+            'head_of_major' => 'nullable|string|max:150',
+            'video_url' => 'nullable|string|max:500',
+            'description' => 'nullable|string',
+            'advantages_raw' => 'nullable|string',
+            'career_raw' => 'nullable|string',
+            'competencies_raw' => 'nullable|string',
+            'facilities_raw' => 'nullable|string',
+            'banner_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $data = [
+            'tagline' => $validated['tagline'] ?? null,
+            'head_of_major' => $validated['head_of_major'] ?? null,
+            'video_url' => $validated['video_url'] ?? null,
+            'description' => $validated['description'] ?? $major->description,
+        ];
+
+        // Parse Advantages (format multi-line: "Judul | Deskripsi | Icon")
+        if ($request->has('advantages_raw')) {
+            $rawLines = explode("\n", str_replace("\r", '', (string) $request->advantages_raw));
+            $advantages = [];
+            foreach ($rawLines as $line) {
+                $trimmed = trim($line);
+                if (! empty($trimmed)) {
+                    $parts = array_map('trim', explode('|', $trimmed));
+                    $advantages[] = [
+                        'title' => $parts[0] ?? '',
+                        'description' => $parts[1] ?? '',
+                        'icon' => (! empty($parts[2]) ? $parts[2] : 'fa-award'),
+                    ];
+                }
+            }
+            $data['advantages'] = ! empty($advantages) ? $advantages : null;
+        }
+
+        // Parse Career Opportunities (newline-separated)
+        if ($request->has('career_raw')) {
+            $careers = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) $request->career_raw)))));
+            $data['career_opportunities'] = ! empty($careers) ? $careers : null;
+        }
+
+        // Parse Competencies (newline-separated)
+        if ($request->has('competencies_raw')) {
+            $comp = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) $request->competencies_raw)))));
+            $data['competencies'] = ! empty($comp) ? $comp : null;
+        }
+
+        // Parse Facilities (newline-separated)
+        if ($request->has('facilities_raw')) {
+            $fac = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) $request->facilities_raw)))));
+            $data['facilities'] = ! empty($fac) ? $fac : null;
+        }
+
+        // Upload Banner Image
+        if ($request->hasFile('banner_image')) {
+            $file = $request->file('banner_image');
+            $filename = 'banner_'.Str::slug($major->code).'_'.time().'.'.$file->getClientOriginalExtension();
+            $path = $file->storeAs('majors/banners', $filename, 'public');
+            $data['banner_image'] = 'storage/'.$path;
+        }
+
+        $major->update($data);
+
+        return redirect()->route('admin.dashboard', ['view' => 'konten_jurusan', 'major_id' => $major->id])
+            ->with('success', "Konten dan profil media jurusan '{$major->name}' berhasil diperbarui!");
+    }
+
+    /**
+     * Upload Foto-Foto Praktikum Siswa untuk Galeri Jurusan.
+     */
+    public function uploadMajorGallery(Request $request, $id)
+    {
+        $major = Major::findOrFail($id);
+
+        $request->validate([
+            'photos' => 'required|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:5120',
+            'caption' => 'nullable|string|max:255',
+        ]);
+
+        $uploadedCount = 0;
+        foreach ($request->file('photos') as $idx => $photo) {
+            $filename = 'gallery_'.Str::slug($major->code).'_'.time().'_'.$idx.'.'.$photo->getClientOriginalExtension();
+            $path = $photo->storeAs('majors/gallery', $filename, 'public');
+
+            MajorGallery::create([
+                'major_id' => $major->id,
+                'image_path' => 'storage/'.$path,
+                'title' => $request->caption ?: 'Dokumentasi Praktikum '.$major->name,
+                'sort_order' => $major->gallery()->count() + 1,
+            ]);
+            $uploadedCount++;
+        }
+
+        return redirect()->route('admin.dashboard', ['view' => 'konten_jurusan', 'major_id' => $major->id])
+            ->with('success', "{$uploadedCount} foto dokumentasi praktikum berhasil diunggah ke galeri jurusan '{$major->name}'!");
+    }
+
+    /**
+     * Hapus Foto Galeri Praktikum Jurusan.
+     */
+    public function deleteMajorGallery($galleryId)
+    {
+        $item = MajorGallery::findOrFail($galleryId);
+        $majorId = $item->major_id;
+
+        // Hapus file fisik jika ada
+        if (! empty($item->image_path)) {
+            $relative = str_replace('storage/', '', $item->image_path);
+            if (Storage::disk('public')->exists($relative)) {
+                Storage::disk('public')->delete($relative);
+            }
+        }
+
+        $item->delete();
+
+        return redirect()->route('admin.dashboard', ['view' => 'konten_jurusan', 'major_id' => $majorId])
+            ->with('success', 'Foto praktikum berhasil dihapus dari galeri jurusan!');
     }
 
     /**

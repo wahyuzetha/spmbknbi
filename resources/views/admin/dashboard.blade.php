@@ -91,22 +91,25 @@
                 <span class="flex-1">Dashboard</span>
             </a>
 
-            <!-- MENU 2: SEKOLAH (DROPDOWN - BERISI DATA JURUSAN & DATA PENGGUNA) -->
+            <!-- MENU 2: SEKOLAH (DROPDOWN - BERISI DATA JURUSAN, KONTEN JURUSAN & DATA PENGGUNA) -->
             <div class="space-y-1">
                 <button type="button" onclick="toggleDropdown('menu-sekolah', 'arrow-sekolah')" 
-                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg hover:bg-[#1e282c] hover:text-white transition {{ in_array($currentView, ['sekolah', 'jurusan', 'pengguna']) ? 'text-white font-bold bg-[#1e282c]/80' : '' }}">
+                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg hover:bg-[#1e282c] hover:text-white transition {{ in_array($currentView, ['sekolah', 'jurusan', 'konten_jurusan', 'pengguna']) ? 'text-white font-bold bg-[#1e282c]/80' : '' }}">
                     <div class="flex items-center gap-3">
                         <i class="fa-solid fa-desktop text-sm w-4 text-center"></i>
                         <span>Sekolah</span>
                     </div>
                     <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" id="arrow-sekolah"></i>
                 </button>
-                <div id="menu-sekolah" class="pl-8 pr-2 py-1 space-y-1 text-[11px] {{ in_array($currentView, ['sekolah', 'jurusan', 'pengguna']) ? '' : 'hidden' }}">
+                <div id="menu-sekolah" class="pl-8 pr-2 py-1 space-y-1 text-[11px] {{ in_array($currentView, ['sekolah', 'jurusan', 'konten_jurusan', 'pengguna']) ? '' : 'hidden' }}">
                     <a href="{{ route('admin.dashboard', ['view' => 'dashboard', 'tab' => 'profile']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
                         • Profil Sekolah
                     </a>
                     <a href="{{ route('admin.dashboard', ['view' => 'jurusan']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'jurusan' ? 'text-emerald-400 font-bold bg-[#1a2226]' : '' }}">
                         • Data Jurusan
+                    </a>
+                    <a href="{{ route('admin.dashboard', ['view' => 'konten_jurusan']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'konten_jurusan' ? 'text-amber-400 font-bold bg-[#1a2226]' : '' }}">
+                        • Profil & Media Jurusan
                     </a>
                     <a href="{{ route('admin.dashboard', ['view' => 'pengguna']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'pengguna' ? 'text-emerald-400 font-bold bg-[#1a2226]' : '' }}">
                         • Data Pengguna
@@ -119,6 +122,14 @@
                     </a>
                 </div>
             </div>
+
+            <!-- MENU 2B: MENU TERSENDIRI KELOLA PROFIL & MEDIA JURUSAN -->
+            <a href="{{ route('admin.dashboard', ['view' => 'konten_jurusan']) }}" 
+               class="flex items-center gap-3 px-3.5 py-3 rounded-lg transition {{ $currentView === 'konten_jurusan' ? 'bg-[#00a65a] text-white shadow-md font-bold' : 'hover:bg-[#1e282c] hover:text-white' }}">
+                <i class="fa-solid fa-photo-film text-sm w-4 text-center text-amber-400"></i>
+                <span class="flex-1">Profil & Media Jurusan</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">New</span>
+            </a>
 
             <!-- MENU 3: DATA SPMB (DROPDOWN) -->
             <div class="space-y-1">
@@ -373,6 +384,11 @@
                                             </td>
                                             <td class="py-3.5 px-3 text-center">
                                                 <div class="inline-flex items-center gap-1.5">
+                                                    <a href="{{ route('admin.dashboard', ['view' => 'konten_jurusan', 'major_id' => $m->id]) }}" 
+                                                       class="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-xs transition flex items-center gap-1 shadow-2xs" 
+                                                       title="Kelola Profil, Video & Galeri Praktikum">
+                                                        <i class="fa-solid fa-photo-film text-[10px]"></i> Media & Konten
+                                                    </a>
                                                     <form action="{{ route('admin.sekolah.jurusan.delete', $m->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus jurusan {{ $m->name }}?')">
                                                         @csrf
                                                         <button type="submit" class="px-3 py-1.5 bg-[#f5365c] hover:bg-rose-700 text-white rounded font-bold text-xs transition">
@@ -410,6 +426,279 @@
                     </div>
 
                 </div>
+            @endif
+
+            <!-- ================= VIEW: KELOLA KONTEN & MEDIA JURUSAN (FOTO PRAKTIKUM, VIDEO & KEUNGGULAN) ================= -->
+            @if($currentView === 'konten_jurusan')
+                @php
+                    $curMajor = $selectedMajor ?? $majors->first();
+                @endphp
+
+                <!-- HEADER KELOLA KONTEN JURUSAN -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200">
+                    <div class="flex items-center gap-2.5 text-slate-800 text-xl font-bold">
+                        <div class="w-9 h-9 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-photo-film"></i>
+                        </div>
+                        <div>
+                            <h1>Profil & Media Jurusan</h1>
+                            <p class="text-xs text-slate-500 font-normal">Kelola foto praktikum siswa, video YouTube, keunggulan, dan prospek karir yang tampil di halaman siswa</p>
+                        </div>
+                    </div>
+                    @if($curMajor)
+                        <a href="{{ route('jurusan.detail', $curMajor->slug ?: $curMajor->id) }}" target="_blank" 
+                           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5 self-start sm:self-auto">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Lihat Tampilan Siswa
+                        </a>
+                    @endif
+                </div>
+
+                <!-- PILIHAN 7 JURUSAN (RIBBON TAB) -->
+                <div class="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs">
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">
+                        Pilih Program Keahlian yang Ingin Dikelola:
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 custom-scroll">
+                        @foreach($majors as $mj)
+                            @php
+                                $isActiveTab = ($curMajor && $curMajor->id === $mj->id);
+                            @endphp
+                            <a href="{{ route('admin.dashboard', ['view' => 'konten_jurusan', 'major_id' => $mj->id]) }}" 
+                               class="px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap {{ $isActiveTab ? 'bg-[#00a65a] text-white shadow-md' : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200/80' }}">
+                                <i class="fa-solid {{ $mj->icon ?: 'fa-graduation-cap' }}"></i>
+                                <span>{{ $mj->code }}</span>
+                                @if($mj->industry_class)
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-black {{ $isActiveTab ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800' }}">
+                                        {{ $mj->industry_class }}
+                                    </span>
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+
+                @if($curMajor)
+                    <!-- GRID DUA KOLOM: KIRI (PROFIL & VIDEO) & KANAN (FOTO PRAKTIKUM) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        
+                        <!-- ================= KOLOM KIRI (7/12): FORM PROFIL, VIDEO & KEUNGGULAN ================= -->
+                        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                            
+                            <div class="bg-[#00a65a] px-5 py-3 text-white font-bold text-sm flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-sliders"></i>
+                                    <span>Pengaturan Konten &bull; {{ $curMajor->name }}</span>
+                                </div>
+                                <span class="text-xs bg-white/20 px-2.5 py-0.5 rounded font-mono">{{ $curMajor->code }}</span>
+                            </div>
+
+                            <form action="{{ route('admin.sekolah.jurusan.updateContent', $curMajor->id) }}" method="POST" enctype="multipart/form-data" class="p-5 space-y-5 text-xs">
+                                @csrf
+
+                                <!-- 1. TAGLINE & KEPALA PROGRAM KEAHLIAN -->
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Tagline / Slogan Jurusan</label>
+                                        <input type="text" name="tagline" value="{{ old('tagline', $curMajor->tagline) }}" 
+                                               placeholder="Contoh: Pusat Keunggulan Otomotif Berstandar Daihatsu" 
+                                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Kepala Program Keahlian (Kaprog)</label>
+                                        <input type="text" name="head_of_major" value="{{ old('head_of_major', $curMajor->head_of_major) }}" 
+                                               placeholder="Contoh: Bpk. Budi Santoso, S.Pd., M.T." 
+                                               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                    </div>
+                                </div>
+
+                                <!-- 2. LINK VIDEO YOUTUBE JURUSAN & PREVIEW -->
+                                <div class="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                                        <i class="fa-brands fa-youtube text-red-600 text-sm"></i>
+                                        <span>URL Video YouTube Jurusan / Praktikum</span>
+                                    </label>
+                                    <input type="url" name="video_url" value="{{ old('video_url', $curMajor->video_url) }}" 
+                                           placeholder="https://www.youtube.com/watch?v=XXXX atau https://youtu.be/XXXX" 
+                                           class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-teal-500 font-medium text-slate-900">
+                                    <p class="text-[11px] text-slate-500">
+                                        Masukkan tautan video YouTube profil atau kegiatan praktikum siswa. Sistem akan otomatis mengubahnya menjadi pemutar video resmi.
+                                    </p>
+
+                                    @if($curMajor->video_embed_url)
+                                        <div class="mt-2.5 pt-2 border-t border-slate-200">
+                                            <div class="text-[11px] font-bold text-slate-600 mb-1">Pratinjau Video Saat Ini:</div>
+                                            <div class="aspect-video w-full max-w-md rounded-xl overflow-hidden shadow-xs border border-slate-300 bg-black">
+                                                <iframe src="{{ $curMajor->video_embed_url }}" class="w-full h-full" frameborder="0" allowfullscreen></iframe>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <!-- 3. FOTO BANNER / COVER JURUSAN -->
+                                <div class="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-image text-blue-600"></i>
+                                        <span>Foto Banner / Cover Header Jurusan</span>
+                                    </label>
+                                    <input type="file" name="banner_image" accept="image/*" 
+                                           class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                                    <p class="text-[11px] text-slate-500">Rekomendasi rasio 16:9 atau lebar minimal 1200x675 px (JPG, PNG, WebP maks 5MB).</p>
+
+                                    @if($curMajor->banner_image)
+                                        <div class="mt-2 pt-2 border-t border-slate-200 flex items-center gap-3">
+                                            <img src="{{ asset($curMajor->banner_image) }}" alt="Banner" class="w-24 h-16 object-cover rounded-lg border border-slate-300 shadow-2xs">
+                                            <span class="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
+                                                <i class="fa-solid fa-circle-check"></i> Banner aktif terpasang
+                                            </span>
+                                        </div>
+                                    @endif
+                                </div>
+
+                                <!-- 4. DESKRIPSI LENGKAP JURUSAN -->
+                                <div class="space-y-1">
+                                    <label class="font-bold text-slate-700">Deskripsi Lengkap Jurusan</label>
+                                    <textarea name="description" rows="3" 
+                                              class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 font-medium leading-relaxed">{{ old('description', $curMajor->description) }}</textarea>
+                                </div>
+
+                                <!-- 5. KEUNGGULAN JURUSAN -->
+                                <div class="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                                    <div class="flex items-center justify-between">
+                                        <label class="font-bold text-slate-800 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-star text-amber-500"></i>
+                                            <span>Keunggulan-Keunggulan Jurusan</span>
+                                        </label>
+                                        <span class="text-[10px] text-slate-500 font-semibold">1 Baris = 1 Butir Keunggulan</span>
+                                    </div>
+                                    <div class="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 leading-normal">
+                                        <strong>Format Penulisan per Baris:</strong><br>
+                                        <code class="font-mono text-blue-800 font-bold">Judul Keunggulan | Penjelasan Singkat | Icon FontAwesome</code><br>
+                                        <span class="text-slate-600">Contoh:</span> <code class="font-mono text-slate-700">Kelas Industri Yamaha | Kurikulum YTA Level 1 resmi | fa-motorcycle</code>
+                                    </div>
+                                    @php
+                                        $advLines = [];
+                                        foreach($curMajor->effective_advantages as $ad) {
+                                            $advLines[] = ($ad['title'] ?? '') . ' | ' . ($ad['description'] ?? '') . ' | ' . ($ad['icon'] ?? 'fa-award');
+                                        }
+                                        $advText = implode("\n", $advLines);
+                                    @endphp
+                                    <textarea name="advantages_raw" rows="4" 
+                                              class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:border-teal-500 font-mono text-[11.5px] leading-relaxed">{{ old('advantages_raw', $advText) }}</textarea>
+                                </div>
+
+                                <!-- 6. PROSPEK KARIR, KOMPETENSI & FASILITAS -->
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Prospek Karir Lulusan</label>
+                                        <p class="text-[10px] text-slate-500">1 baris per profesi:</p>
+                                        @php
+                                            $careerText = implode("\n", $curMajor->effective_career_opportunities);
+                                        @endphp
+                                        <textarea name="career_raw" rows="4" 
+                                                  class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 text-xs">{{ old('career_raw', $careerText) }}</textarea>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Kompetensi yang Dipelajari</label>
+                                        <p class="text-[10px] text-slate-500">1 baris per keterampilan:</p>
+                                        @php
+                                            $compText = implode("\n", $curMajor->effective_competencies);
+                                        @endphp
+                                        <textarea name="competencies_raw" rows="4" 
+                                                  class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 text-xs">{{ old('competencies_raw', $compText) }}</textarea>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Fasilitas Praktik / Bengkel</label>
+                                        <p class="text-[10px] text-slate-500">1 baris per lab/bengkel:</p>
+                                        @php
+                                            $facText = implode("\n", $curMajor->effective_facilities);
+                                        @endphp
+                                        <textarea name="facilities_raw" rows="4" 
+                                                  class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 text-xs">{{ old('facilities_raw', $facText) }}</textarea>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="w-full py-3 bg-[#00a65a] hover:bg-[#008f4c] text-white font-bold rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer text-sm">
+                                    <i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan Konten {{ $curMajor->code }}
+                                </button>
+                            </form>
+
+                        </div>
+
+                        <!-- ================= KOLOM KANAN (5/12): GALERI FOTO PRAKTIKUM SISWA ================= -->
+                        <div class="lg:col-span-5 space-y-6">
+                            
+                            <!-- KARTU UPLOAD FOTO PRAKTIKUM -->
+                            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                                <div class="bg-[#1e282c] px-5 py-3 text-white font-bold text-sm flex items-center gap-2">
+                                    <i class="fa-solid fa-cloud-arrow-up text-teal-400"></i>
+                                    <span>Unggah Foto Praktikum &bull; {{ $curMajor->code }}</span>
+                                </div>
+                                <form action="{{ route('admin.sekolah.jurusan.uploadGallery', $curMajor->id) }}" method="POST" enctype="multipart/form-data" class="p-5 space-y-3.5 text-xs">
+                                    @csrf
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Pilih Foto Praktikum (Bisa Lebih Dari 1 Foto)</label>
+                                        <input type="file" name="photos[]" multiple accept="image/*" required 
+                                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 cursor-pointer">
+                                        <p class="text-[11px] text-slate-400">Pilih satu atau beberapa foto kegiatan bengkel/lab (JPG, PNG, WebP maks 5MB per foto).</p>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="font-bold text-slate-700">Judul / Keterangan Foto (Opsional)</label>
+                                        <input type="text" name="caption" placeholder="Contoh: Praktik Uji Emisi & Overhaul Mesin" 
+                                               class="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                    </div>
+                                    <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition flex items-center justify-center gap-2 cursor-pointer">
+                                        <i class="fa-solid fa-upload"></i> Unggah ke Galeri Jurusan
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- KARTU DAFTAR FOTO PRAKTIKUM TERUNGGAH -->
+                            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                                    <span>Foto Praktikum Tersimpan ({{ $curMajor->gallery->count() }})</span>
+                                    <span class="text-[11px] text-slate-500">Live di Web Calon Siswa</span>
+                                </div>
+                                <div class="p-4">
+                                    @if($curMajor->gallery->count() > 0)
+                                        <div class="grid grid-cols-2 gap-3 max-h-[500px] overflow-y-auto custom-scroll pr-1">
+                                            @foreach($curMajor->gallery as $photo)
+                                                <div class="group relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                                                    <img src="{{ asset($photo->image_path) }}" alt="{{ $photo->title }}" class="w-full h-28 object-cover">
+                                                    <div class="p-2">
+                                                        <div class="text-[11px] font-bold text-slate-800 truncate" title="{{ $photo->title }}">
+                                                            {{ $photo->title ?: 'Praktikum ' . $curMajor->code }}
+                                                        </div>
+                                                        <div class="text-[10px] text-slate-400 mt-0.5">
+                                                            {{ $photo->created_at->format('d M Y') }}
+                                                        </div>
+                                                    </div>
+                                                    <!-- TOMBOL HAPUS FOTO -->
+                                                    <form action="{{ route('admin.sekolah.jurusan.deleteGallery', $photo->id) }}" method="POST" 
+                                                          onsubmit="return confirm('Hapus foto praktikum ini?')" 
+                                                          class="absolute top-2 right-2">
+                                                        @csrf
+                                                        <button type="submit" class="w-7 h-7 rounded-lg bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center shadow-md transition cursor-pointer" title="Hapus foto">
+                                                            <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="py-8 text-center text-slate-400 space-y-2">
+                                            <i class="fa-solid fa-images text-3xl text-slate-300"></i>
+                                            <p class="text-xs">Belum ada foto praktikum yang diunggah untuk jurusan ini.</p>
+                                            <p class="text-[11px] text-slate-400">Gunakan form di atas untuk mengunggah dokumentasi nyata bengkel/lab.</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+                @endif
+
             @endif
 
             <!-- ================= VIEW B: MENU SEKOLAH -> DATA PENGGUNA (PERSIS GAMBAR 1) ================= -->
