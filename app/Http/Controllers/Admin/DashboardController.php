@@ -1544,4 +1544,24 @@ class DashboardController extends Controller
             ->route('admin.dashboard', ['view' => 'pengeluaran'])
             ->with('success', "Pengeluaran '{$title}' (Rp ".number_format($amount, 0, ',', '.').') berhasil dihapus dari sistem.');
     }
+
+    /**
+     * Endpoint JSON Real-time Sebaran Pendaftar SMP/MTs Kabupaten Boyolali untuk Peta Interaktif.
+     */
+    public function mapRealtimeStats()
+    {
+        $schools = StudentSchool::whereNotNull('asal_sekolah')
+            ->where('asal_sekolah', '!=', '')
+            ->pluck('asal_sekolah')
+            ->groupBy(fn ($name) => strtoupper(trim(StudentSchool::normalizeSchoolName($name))))
+            ->map(fn ($group) => $group->count())
+            ->all();
+
+        return response()->json([
+            'total_registrations' => Registration::count(),
+            'active_schools_count' => count($schools),
+            'school_counts' => $schools,
+            'timestamp' => now()->format('H:i:s'),
+        ]);
+    }
 }

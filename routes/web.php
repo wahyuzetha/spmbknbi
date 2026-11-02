@@ -52,6 +52,8 @@ Route::middleware('auth')->get('/dashboard', function () {
     return redirect()->route('murid.dashboard');
 })->name('dashboard');
 
+Route::middleware('auth')->get('/spmb/map-boyolali-realtime', [AdminDashboardController::class, 'mapRealtimeStats'])->name('spmb.map.realtime');
+
 // 4. Portal Admin SPMB (Protected by Auth & Role: admin)
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');

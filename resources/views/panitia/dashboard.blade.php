@@ -101,17 +101,11 @@
                     <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" id="arrow-sekolah-panitia"></i>
                 </button>
                 <div id="menu-sekolah-panitia" class="pl-8 pr-2 py-1 space-y-1 text-[11px] {{ in_array($currentView, ['sekolah', 'jurusan']) ? '' : 'hidden' }}">
-                    <a href="{{ route('panitia.dashboard', ['view' => 'dashboard', 'tab' => 'profile']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
-                        • Profil Sekolah
+                    <a href="{{ route('panitia.dashboard') }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
+                        • Peta Sasaran SMP/MTs
                     </a>
                     <a href="{{ route('panitia.dashboard', ['view' => 'jurusan']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition {{ $currentView === 'jurusan' ? 'text-emerald-400 font-bold' : '' }}">
                         • Jurusan & Kuota
-                    </a>
-                    <a href="{{ route('panitia.dashboard', ['view' => 'dashboard', 'tab' => 'alamat']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
-                        • Alamat Sekolah
-                    </a>
-                    <a href="{{ route('panitia.dashboard', ['view' => 'dashboard', 'tab' => 'contact']) }}" class="block py-1.5 px-2 rounded hover:text-white hover:bg-[#1a2226] transition">
-                        • Kontak & Medsos
                     </a>
                 </div>
             </div>
@@ -458,123 +452,8 @@
                     </div>
                 </div>
 
-                <!-- ================= VIEW 1: DASHBOARD UTAMA (TABS PROFILE SEKOLAH) ================= -->
-                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    
-                    <!-- TAB NAVIGATION HEADER (PERSIS GAMBAR USER) -->
-                    <div class="flex items-center gap-1 border-b border-slate-200 px-4 pt-3 bg-slate-50/50 overflow-x-auto text-xs font-bold">
-                        <button type="button" onclick="switchProfileTabPanitia('profile')" id="tab-btn-profile-p" 
-                                class="px-4 py-2.5 rounded-t-lg transition flex items-center gap-2 border-b-2 {{ $profileTab === 'profile' ? 'border-[#00a884] text-[#00a884] bg-white font-extrabold' : 'border-transparent text-slate-600 hover:text-slate-900' }}">
-                            <i class="fa-solid fa-house"></i> Profile
-                        </button>
-                        <button type="button" onclick="switchProfileTabPanitia('alamat')" id="tab-btn-alamat-p" 
-                                class="px-4 py-2.5 rounded-t-lg transition flex items-center gap-2 border-b-2 {{ $profileTab === 'alamat' ? 'border-[#00a884] text-[#00a884] bg-white font-extrabold' : 'border-transparent text-slate-600 hover:text-slate-900' }}">
-                            <i class="fa-regular fa-building"></i> Alamat Sekolah
-                        </button>
-                        <button type="button" onclick="switchProfileTabPanitia('contact')" id="tab-btn-contact-p" 
-                                class="px-4 py-2.5 rounded-t-lg transition flex items-center gap-2 border-b-2 {{ $profileTab === 'contact' ? 'border-[#00a884] text-[#00a884] bg-white font-extrabold' : 'border-transparent text-slate-600 hover:text-slate-900' }}">
-                            <i class="fa-solid fa-phone"></i> Contact
-                        </button>
-                        <button type="button" onclick="switchProfileTabPanitia('kepsek')" id="tab-btn-kepsek-p" 
-                                class="px-4 py-2.5 rounded-t-lg transition flex items-center gap-2 border-b-2 {{ $profileTab === 'kepsek' ? 'border-[#00a884] text-[#00a884] bg-white font-extrabold' : 'border-transparent text-slate-600 hover:text-slate-900' }}">
-                            <i class="fa-solid fa-user"></i> Data Kepala Sekolah
-                        </button>
-                    </div>
-
-                    <!-- FORM SIMPAN PENGATURAN SEKOLAH -->
-                    <form action="{{ route('panitia.settings.update') }}" method="POST" class="p-6 sm:p-8 space-y-5">
-                        @csrf
-
-                        <!-- TAB 1: PROFILE (PERSIS GAMBAR USER) -->
-                        <div id="tab-content-profile-p" class="{{ $profileTab === 'profile' ? '' : 'hidden' }} space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">NPSN</label>
-                                <div class="sm:col-span-9">
-                                    <input type="text" name="school_npsn" value="{{ $settings['school_npsn'] ?? '20308458' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:bg-white focus:border-teal-500">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Nama Sekolah</label>
-                                <div class="sm:col-span-9">
-                                    <input type="text" name="school_name" value="{{ $settings['school_name'] ?? 'SMK KARYA NUGRAHA BOYOLALI' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:bg-white focus:border-teal-500">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Jenjang Sekolah</label>
-                                <div class="sm:col-span-9">
-                                    <select name="school_level" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:bg-white focus:border-teal-500">
-                                        <option value="SMK" selected>SMK</option>
-                                        <option value="SMA">SMA</option>
-                                        <option value="SMP">SMP</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Status Sekolah</label>
-                                <div class="sm:col-span-9">
-                                    <select name="school_status" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:bg-white focus:border-teal-500">
-                                        <option value="Swasta" selected>Swasta</option>
-                                        <option value="Negeri">Negeri</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TAB 2: ALAMAT SEKOLAH -->
-                        <div id="tab-content-alamat-p" class="{{ $profileTab === 'alamat' ? '' : 'hidden' }} space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Alamat Lengkap</label>
-                                <div class="sm:col-span-9">
-                                    <textarea name="school_address" rows="3" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">{{ $settings['school_address'] ?? 'Jl. Tentara Pelajar No. 1, Boyolali, Jawa Tengah' }}</textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TAB 3: CONTACT -->
-                        <div id="tab-content-contact-p" class="{{ $profileTab === 'contact' ? '' : 'hidden' }} space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">No. WhatsApp / HP</label>
-                                <div class="sm:col-span-9">
-                                    <input type="text" name="school_phone" value="{{ $settings['school_phone'] ?? '085290944090' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Email Resmi</label>
-                                <div class="sm:col-span-9">
-                                    <input type="email" name="school_email" value="{{ $settings['school_email'] ?? 'smkknbi@gmail.com' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TAB 4: DATA KEPALA SEKOLAH -->
-                        <div id="tab-content-kepsek-p" class="{{ $profileTab === 'kepsek' ? '' : 'hidden' }} space-y-4">
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">Nama Kepala Sekolah</label>
-                                <div class="sm:col-span-9">
-                                    <input type="text" name="school_principal_name" value="{{ $settings['school_principal_name'] ?? 'Drs. H. Mulyadi, M.Pd.' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                <label class="sm:col-span-3 text-xs font-bold text-slate-700 sm:text-right">NIP / NUPTK</label>
-                                <div class="sm:col-span-9">
-                                    <input type="text" name="school_principal_nip" value="{{ $settings['school_principal_nip'] ?? '19680512 199403 1 007' }}" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- TOMBOL AKSI -->
-                        <div class="pt-4 border-t border-slate-100 flex justify-end gap-2.5">
-                            <button type="submit" class="px-5 py-2.5 bg-[#00a65a] hover:bg-[#008f4c] text-white font-bold text-xs rounded-lg shadow transition flex items-center gap-1.5">
-                                <i class="fa-solid fa-floppy-disk"></i> Save Changes
-                            </button>
-                            <button type="reset" class="px-5 py-2.5 bg-[#6c757d] hover:bg-[#5a6268] text-white font-bold text-xs rounded-lg transition">
-                                Reset
-                            </button>
-                        </div>
-
-                    </form>
-
-                </div>
+                <!-- ================= VIEW 1: PEMETAAN SASARAN SMP/MTS KABUPATEN BOYOLALI REAL-TIME ================= -->
+                @include('admin.partials.boyolali_school_map')
             @endif
 
             <!-- ================= VIEW 2: VERIFIKASI BERKAS PENDAFTAR ================= -->

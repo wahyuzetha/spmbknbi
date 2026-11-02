@@ -308,4 +308,42 @@ class HighVolumePerformanceTest extends TestCase
         $this->assertGreaterThan(0, Major::count());
         $this->assertEquals('2027/2028', AcademicYear::where('is_active', true)->value('name'));
     }
+
+    public function test_dashboard_menampilkan_peta_sasaran_smp_mts_kabupaten_boyolali_secara_realtime()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $panitia = User::where('role', 'panitia')->first();
+
+        $this->seedBulkStudents(15);
+
+        // 1. Cek Dashboard Admin memuat Peta Sasaran SMP/MTs Boyolali & tidak memuat tab Data Kepala Sekolah lama
+        $adminDash = $this->actingAs($admin)->get(route('admin.dashboard'));
+        $adminDash->assertStatus(200);
+        $adminDash->assertSee('Pemetaan Sasaran', false);
+        $adminDash->assertSee('SMP/MTs Boyolali.', false);
+        $adminDash->assertSee('SELURUH KABUPATEN BOYOLALI', false);
+        $adminDash->assertSee('boyolali-smp-mts-map', false);
+        $adminDash->assertSee('SMP Negeri 1 Boyolali', false);
+        $adminDash->assertDontSee('Data Kepala Sekolah', false);
+
+        // 2. Cek Dashboard Panitia juga memuat Peta Sasaran SMP/MTs Boyolali
+        if ($panitia) {
+            $panitiaDash = $this->actingAs($panitia)->get(route('panitia.dashboard'));
+            $panitiaDash->assertStatus(200);
+            $panitiaDash->assertSee('Pemetaan Sasaran', false);
+            $panitiaDash->assertSee('boyolali-smp-mts-map', false);
+            $panitiaDash->assertDontSee('Data Kepala Sekolah', false);
+        }
+
+        // 3. Cek Endpoint JSON Real-time Peta Boyolali
+        $realtimeRes = $this->actingAs($admin)->getJson(route('spmb.map.realtime'));
+        $realtimeRes->assertStatus(200)
+            ->assertJsonStructure([
+                'total_registrations',
+                'active_schools_count',
+                'school_counts',
+                'timestamp',
+            ]);
+        $this->assertGreaterThanOrEqual(15, $realtimeRes->json('total_registrations'));
+    }
 }
