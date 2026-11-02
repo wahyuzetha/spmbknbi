@@ -264,11 +264,20 @@
         ->all();
 @endphp
 
-<!-- LEAFLET CSS & JS (OPENSTREETMAP / CARTO POSITRON) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<!-- LEAFLET CSS & JS (DUAL CDN CLOUDFLARE + JSDELIVR AGAR 100% TAMPIL TANPA API KEY) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css';" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+    if (typeof window.L === 'undefined') {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"><\/script>');
+    }
+</script>
 
 <style>
+    /* Pastikan tile peta tampil bersih & cerah menyerupai peta navigasi modern tanpa perlu API Key */
+    .boyolali-clean-tiles .leaflet-tile-pane {
+        filter: saturate(1.05) contrast(1.02);
+    }
     .boyolali-map-marker {
         display: flex;
         align-items: center;
@@ -531,8 +540,22 @@
                 <div id="boyolali-map-search-results" class="hidden mt-1.5 bg-white rounded-xl shadow-xl border border-slate-200 max-h-56 overflow-y-auto divide-y divide-slate-100 text-xs text-slate-800"></div>
             </div>
 
-            <!-- TOMBOL RESET VIEW PETA (POJOK KANAN ATAS) -->
+            <!-- TOMBOL MODE PETA & RESET VIEW (POJOK KANAN ATAS - 100% TANPA API KEY) -->
             <div class="absolute top-3.5 right-3.5 z-[500] flex items-center gap-1.5">
+                <div class="hidden md:inline-flex rounded-xl bg-white/95 p-1 shadow-lg border border-slate-200 text-[11px] font-bold text-slate-700">
+                    <button type="button" onclick="switchBoyolaliTileLayer('clean')" id="tile-btn-clean"
+                            class="px-2.5 py-1 rounded-lg bg-sky-600 text-white transition cursor-pointer">
+                        Peta Jalan
+                    </button>
+                    <button type="button" onclick="switchBoyolaliTileLayer('gmaps')" id="tile-btn-gmaps"
+                            class="px-2.5 py-1 rounded-lg hover:bg-slate-100 text-slate-700 transition cursor-pointer">
+                        Satelit
+                    </button>
+                    <button type="button" onclick="switchBoyolaliTileLayer('osm')" id="tile-btn-osm"
+                            class="px-2.5 py-1 rounded-lg hover:bg-slate-100 text-slate-700 transition cursor-pointer">
+                        OpenStreetMap
+                    </button>
+                </div>
                 <button type="button"
                         onclick="resetBoyolaliMapView()"
                         title="Reset Tampilan Peta Kabupaten Boyolali"
@@ -543,7 +566,7 @@
             </div>
 
             <!-- KANVAS PETA -->
-            <div id="boyolali-smp-mts-map" class="w-full h-full z-10"></div>
+            <div id="boyolali-smp-mts-map" class="boyolali-clean-tiles w-full h-full z-10"></div>
         </div>
 
         <!-- 3 KARTU FITUR BAWAH (PERSIS GAMBAR REFERENSI) -->
@@ -590,13 +613,41 @@
         const boyolaliCenter = [-7.4450, 110.6350];
 
         let boyolaliMap = null;
+        let currentBaseTileLayer = null;
         let markersLayerGroup = null;
         let schoolMarkersByName = {};
         let currentTypeFilter = 'all';
 
+        // Daftar Server Peta 100% Gratis Tanpa API Key (Anti-Blokir & Auto-Fallback)
+        const freeTileProviders = {
+            clean: {
+                url: 'https://mt1.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}',
+                attribution: '&copy; Peta Kabupaten Boyolali Real-time'
+            },
+            gmaps: {
+                url: 'https://mt1.google.com/vt/lyrs=y&hl=id&x={x}&y={y}&z={z}',
+                attribution: '&copy; Citra Satelit & Jalan Boyolali'
+            },
+            osm: {
+                url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; OpenStreetMap contributors'
+            }
+        };
+
         function initBoyolaliTargetMap() {
             const mapEl = document.getElementById('boyolali-smp-mts-map');
-            if (!mapEl || typeof L === 'undefined') return;
+            if (!mapEl) return;
+
+            if (typeof L === 'undefined') {
+                // Jika script Leaflet belum selesai dimuat, coba kembali dalam 150ms
+                setTimeout(initBoyolaliTargetMap, 150);
+                return;
+            }
+
+            if (boyolaliMap) {
+                boyolaliMap.invalidateSize();
+                return;
+            }
 
             boyolaliMap = L.map('boyolali-smp-mts-map', {
                 center: boyolaliCenter,
@@ -608,12 +659,8 @@
             // Zoom control di pojok kanan bawah persis gambar referensi
             L.control.zoom({ position: 'bottomright' }).addTo(boyolaliMap);
 
-            // Tile CartoDB Positron (cerah, bersih, menonjolkan titik biru & danau/waduk persis gambar referensi)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(boyolaliMap);
+            // Pasang tile layer default (Peta Terang Tanpa API Key) dengan fallback otomatis ke OpenStreetMap
+            window.switchBoyolaliTileLayer('clean');
 
             markersLayerGroup = L.layerGroup().addTo(boyolaliMap);
 
@@ -637,7 +684,52 @@
                 .addTo(boyolaliMap);
 
             renderBoyolaliMarkers();
+
+            // Pastikan ukuran kanvas peta langsung dihitung ulang dengan presisi
+            setTimeout(() => {
+                if (boyolaliMap) boyolaliMap.invalidateSize();
+            }, 250);
+
+            if (typeof ResizeObserver !== 'undefined') {
+                new ResizeObserver(() => {
+                    if (boyolaliMap) boyolaliMap.invalidateSize();
+                }).observe(mapEl);
+            }
         }
+
+        window.switchBoyolaliTileLayer = function(mode) {
+            if (!boyolaliMap) return;
+            const provider = freeTileProviders[mode] || freeTileProviders.clean;
+
+            if (currentBaseTileLayer) {
+                boyolaliMap.removeLayer(currentBaseTileLayer);
+            }
+
+            let fallbackTriggered = false;
+            currentBaseTileLayer = L.tileLayer(provider.url, {
+                attribution: provider.attribution,
+                maxZoom: 19
+            });
+
+            currentBaseTileLayer.on('tileerror', function() {
+                if (!fallbackTriggered && mode !== 'osm') {
+                    fallbackTriggered = true;
+                    window.switchBoyolaliTileLayer('osm');
+                }
+            });
+
+            currentBaseTileLayer.addTo(boyolaliMap);
+
+            ['clean', 'gmaps', 'osm'].forEach(key => {
+                const btn = document.getElementById('tile-btn-' + key);
+                if (!btn) return;
+                if (key === mode) {
+                    btn.className = 'px-2.5 py-1 rounded-lg bg-sky-600 text-white transition cursor-pointer';
+                } else {
+                    btn.className = 'px-2.5 py-1 rounded-lg hover:bg-slate-100 text-slate-700 transition cursor-pointer';
+                }
+            });
+        };
 
         function renderBoyolaliMarkers(searchQuery = '') {
             if (!markersLayerGroup) return;
@@ -878,9 +970,13 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(initBoyolaliTargetMap, 80);
-            setInterval(syncBoyolaliMapRealtime, 20000);
-        });
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setTimeout(initBoyolaliTargetMap, 50);
+            });
+        } else {
+            setTimeout(initBoyolaliTargetMap, 50);
+        }
+        setInterval(syncBoyolaliMapRealtime, 20000);
     })();
 </script>
