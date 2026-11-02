@@ -13,13 +13,17 @@ class LandingController extends Controller
     {
         $academicYear = AcademicYear::where('is_active', true)->first();
         $majors = Major::where('is_active', true)->get();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
+
+        $statusCounts = Registration::selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
 
         $stats = [
             'total_majors' => $majors->count(),
             'total_quota' => $majors->sum('quota'),
-            'total_registrants' => Registration::count(),
-            'total_accepted' => Registration::where('status', 'accepted')->count(),
+            'total_registrants' => (int) $statusCounts->sum(),
+            'total_accepted' => (int) ($statusCounts['accepted'] ?? 0),
         ];
 
         return view('landing', compact('academicYear', 'majors', 'settings', 'stats'));
@@ -41,7 +45,7 @@ class LandingController extends Controller
             ->get();
 
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('jurusan.detail', compact('major', 'allMajors', 'academicYear', 'settings'));
     }

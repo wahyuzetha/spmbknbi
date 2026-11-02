@@ -237,11 +237,26 @@
             </div>
         </div>
         <div class="flex items-center gap-2">
-            <button type="button" onclick="window.print()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer">
+            <button type="button" onclick="triggerPrintDocument()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-900/30 cursor-pointer">
                 <i class="fa-solid fa-print text-sm"></i> Cetak / Simpan PDF
             </button>
         </div>
     </div>
+
+    <script>
+        function triggerPrintDocument() {
+            const images = Array.from(document.images);
+            const pending = images.filter(img => !img.complete);
+            if (pending.length === 0) {
+                window.print();
+                return;
+            }
+            Promise.all(pending.map(img => new Promise(resolve => {
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            }))).then(() => window.print());
+        }
+    </script>
 
     <!-- ========================================================================================= -->
     <!-- LEMBAR F4: HALAMAN 1 (BUKTI PENDAFTARAN & BIODATA SISWA)                                  -->
@@ -252,12 +267,12 @@
             <!-- KOP SURAT RESMI -->
             <div class="kop-header mb-4 pb-3 border-b-[3.5px] border-double border-slate-900">
                 @if(!empty($kopBanner))
-                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-36 object-contain mx-auto">
+                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" loading="eager" decoding="sync" class="w-full h-auto max-h-36 object-contain mx-auto">
                 @else
                     <div class="flex items-center justify-between gap-4 py-1.5">
                         <div class="w-24 h-24 shrink-0 flex items-center justify-center">
                             @if(!empty($settings['school_logo'] ?? $schoolLogo))
-                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
+                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" loading="eager" decoding="sync" class="max-w-full max-h-full object-contain">
                             @else
                                 <div class="w-20 h-20 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-base">
                                     SPMB
@@ -433,7 +448,7 @@
             <div class="flex flex-col items-center">
                 <div class="w-32 h-40 border-2 border-slate-300 rounded-xl bg-slate-50 flex flex-col items-center justify-center p-1.5 overflow-hidden shadow-xs relative">
                     @if($pasFoto)
-                        <img src="{{ asset('storage/' . $pasFoto->file_path) }}" alt="Pas Foto" class="w-full h-full object-cover rounded-lg">
+                        <img src="{{ asset('storage/' . $pasFoto->file_path) }}" alt="Pas Foto" loading="eager" decoding="sync" class="w-full h-full object-cover rounded-lg">
                     @else
                         <div class="w-full h-full border border-dashed border-slate-300 rounded-lg flex flex-col items-center justify-center text-slate-400 p-2 text-center bg-white">
                             <i class="fa-solid fa-camera text-slate-300 text-2xl mb-1.5"></i>
@@ -451,7 +466,7 @@
                 
                 <div class="h-24 flex items-center justify-center my-1.5 relative">
                     @if(!empty($settings['chairman_signature']))
-                        <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" class="max-h-24 object-contain">
+                        <img src="{{ asset($settings['chairman_signature']) }}" alt="TTD" loading="eager" decoding="sync" class="max-h-24 object-contain">
                     @else
                         <div class="h-20 w-40"></div>
                     @endif
@@ -474,12 +489,12 @@
             <!-- KOP SURAT RESMI (SAMA PERSIS DENGAN HALAMAN 1) -->
             <div class="kop-header mb-5 pb-3 border-b-[3.5px] border-double border-slate-900">
                 @if(!empty($kopBanner))
-                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-36 object-contain mx-auto">
+                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" loading="eager" decoding="sync" class="w-full h-auto max-h-36 object-contain mx-auto">
                 @else
                     <div class="flex items-center justify-between gap-4 py-1.5">
                         <div class="w-24 h-24 shrink-0 flex items-center justify-center">
                             @if(!empty($settings['school_logo'] ?? $schoolLogo))
-                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
+                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" loading="eager" decoding="sync" class="max-w-full max-h-full object-contain">
                             @else
                                 <div class="w-20 h-20 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-base">
                                     SPMB
@@ -627,12 +642,12 @@
             <!-- KOP SURAT RESMI (SAMA PERSIS DENGAN HALAMAN 1 & 2) -->
             <div class="kop-header mb-3.5 pb-2.5 border-b-[3.5px] border-double border-slate-900 font-sans">
                 @if(!empty($kopBanner))
-                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" class="w-full h-auto max-h-36 object-contain mx-auto">
+                    <img src="{{ asset($kopBanner) }}" alt="Kop Surat Resmi" loading="eager" decoding="sync" class="w-full h-auto max-h-36 object-contain mx-auto">
                 @else
                     <div class="flex items-center justify-between gap-4 py-1.5">
                         <div class="w-24 h-24 shrink-0 flex items-center justify-center">
                             @if(!empty($settings['school_logo'] ?? $schoolLogo))
-                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" class="max-w-full max-h-full object-contain">
+                                <img src="{{ asset($settings['school_logo'] ?? $schoolLogo) }}" alt="Logo" loading="eager" decoding="sync" class="max-w-full max-h-full object-contain">
                             @else
                                 <div class="w-20 h-20 rounded-full border-2 border-emerald-600 flex items-center justify-center font-black text-emerald-700 text-base">
                                     SPMB

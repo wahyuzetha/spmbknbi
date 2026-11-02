@@ -8,10 +8,10 @@ use App\Models\Expense;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
-use App\Models\StudentSchool;
 use App\Models\SystemSetting;
 use App\Services\PaymentExportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -60,29 +60,31 @@ class DashboardController extends Controller
         $totalTransaksi = $allPayments->count();
         $multiTransactionCount = $groupedPayments->where('is_multi', true)->count();
 
-        // Data seluruh calon siswa untuk pencarian cepat dropdown input kasir/bendahara
-        $candidatesForPayment = Registration::with(['user', 'major', 'school'])
-            ->latest()
-            ->get()
-            ->map(function ($r) {
-                return (object) [
-                    'id' => $r->id,
-                    'registration_number' => $r->registration_number,
-                    'name' => $r->user->name ?? 'Calon Siswa',
-                    'phone' => $r->user->phone ?? '-',
-                    'school' => $r->school->asal_sekolah ?? '-',
-                    'major' => $r->major->name ?? '-',
-                    'industry_class' => $r->major->industry_class ?? '',
-                ];
-            });
+        // Data seluruh calon siswa untuk pencarian cepat dropdown input kasir/bendahara (1 Query Join Ringan tanpa Hydrate Model)
+        $candidatesForPayment = DB::table('pendaftaran')
+            ->leftJoin('siswa', 'pendaftaran.user_id', '=', 'siswa.id')
+            ->leftJoin('jurusan', 'pendaftaran.major_id', '=', 'jurusan.id')
+            ->leftJoin('asal_sekolah_siswa', 'pendaftaran.id', '=', 'asal_sekolah_siswa.registration_id')
+            ->select([
+                'pendaftaran.id',
+                'pendaftaran.registration_number',
+                DB::raw("COALESCE(siswa.name, 'Calon Siswa') as name"),
+                DB::raw("COALESCE(siswa.phone, '-') as phone"),
+                DB::raw("COALESCE(asal_sekolah_siswa.asal_sekolah, '-') as school"),
+                DB::raw("COALESCE(jurusan.name, '-') as major"),
+                DB::raw("COALESCE(jurusan.industry_class, '') as industry_class"),
+            ])
+            ->orderByDesc('pendaftaran.created_at')
+            ->orderByDesc('pendaftaran.id')
+            ->get();
 
         // 2. Data Pengeluaran Kas SPMB & Rekonsiliasi Saldo Kas
         $allExpenses = Expense::with('creator')->latest('expense_date')->latest('id')->get();
         $totalPengeluaran = (float) Expense::sum('amount');
         $saldoKas = (float) ($totalKasMasuk - $totalPengeluaran);
 
-        // 3. Pengaturan Sistem & Logo Sekolah
-        $settings = SystemSetting::pluck('value', 'key');
+        // 3. Pengaturan Sistem & Logo Sekolah (Dari Memoized Cache)
+        $settings = collect(SystemSetting::allCached());
         $schoolLogo = $settings['school_logo'] ?? null;
 
         $currentView = $request->get('view', 'administrasi');
@@ -135,7 +137,7 @@ class DashboardController extends Controller
         ]);
 
         $studentName = $registration->user->name ?? 'Calon Siswa';
-        $nominalFormatted = 'Rp ' . number_format($payment->amount, 0, ',', '.');
+        $nominalFormatted = 'Rp '.number_format($payment->amount, 0, ',', '.');
 
         return redirect()->route('bendahara.dashboard', ['view' => 'administrasi'])
             ->with('success', "Pembayaran tunai {$nominalFormatted} atas nama {$studentName} ({$registration->registration_number}) berhasil disimpan dan otomatis terverifikasi oleh Bendahara!")
@@ -152,7 +154,7 @@ class DashboardController extends Controller
 
         $registration = $payment->registration;
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_receipt', compact('payment', 'registration', 'settings', 'academicYear'));
     }
@@ -168,7 +170,7 @@ class DashboardController extends Controller
         $confirmedPayments = $registration->payments->where('status', 'confirmed')->sortBy('payment_date');
         $totalPaid = $confirmedPayments->sum('amount');
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
     }
@@ -197,11 +199,11 @@ class DashboardController extends Controller
         $newNumber = $registration->updateMajorWithNumberChange($newMajor);
 
         $studentName = $registration->user->name ?? 'Calon Siswa';
-        $industryInfo = !empty($newMajor->industry_class) ? " ({$newMajor->industry_class})" : '';
+        $industryInfo = ! empty($newMajor->industry_class) ? " ({$newMajor->industry_class})" : '';
 
         $numberChangeInfo = ($oldNumber !== $newNumber)
             ? ", dan nomor pendaftaran otomatis diperbarui dari {$oldNumber} menjadi {$newNumber}"
-            : "";
+            : '';
 
         return back()->with('success', "Pilihan jurusan calon siswa {$studentName} berhasil diperbarui menjadi {$newMajor->name}{$industryInfo}{$numberChangeInfo}!");
     }
@@ -223,17 +225,17 @@ class DashboardController extends Controller
         $expense = Expense::create([
             'expense_code' => Expense::generateExpenseCode(),
             'title' => $validated['title'],
-            'category' => !empty($validated['category']) ? $validated['category'] : 'Operasional SPMB',
+            'category' => ! empty($validated['category']) ? $validated['category'] : 'Operasional SPMB',
             'amount' => $validated['amount'],
             'expense_date' => $validated['expense_date'],
             'description' => $validated['description'],
-            'recipient' => !empty($validated['recipient']) ? $validated['recipient'] : 'Panitia / Vendor',
+            'recipient' => ! empty($validated['recipient']) ? $validated['recipient'] : 'Panitia / Vendor',
             'created_by' => auth()->id(),
         ]);
 
         return redirect()
             ->route('bendahara.dashboard', ['view' => 'pengeluaran'])
-            ->with('success', "Pengeluaran kas SPMB sebesar Rp " . number_format($expense->amount, 0, ',', '.') . " untuk '{$expense->title}' berhasil dicatat.");
+            ->with('success', 'Pengeluaran kas SPMB sebesar Rp '.number_format($expense->amount, 0, ',', '.')." untuk '{$expense->title}' berhasil dicatat.");
     }
 
     /**
@@ -254,11 +256,11 @@ class DashboardController extends Controller
 
         $expense->update([
             'title' => $validated['title'],
-            'category' => !empty($validated['category']) ? $validated['category'] : $expense->category,
+            'category' => ! empty($validated['category']) ? $validated['category'] : $expense->category,
             'amount' => $validated['amount'],
             'expense_date' => $validated['expense_date'],
             'description' => $validated['description'],
-            'recipient' => !empty($validated['recipient']) ? $validated['recipient'] : $expense->recipient,
+            'recipient' => ! empty($validated['recipient']) ? $validated['recipient'] : $expense->recipient,
         ]);
 
         return redirect()

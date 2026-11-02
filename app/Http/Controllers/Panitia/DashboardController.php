@@ -23,35 +23,41 @@ class DashboardController extends Controller
         $academicYear = AcademicYear::where('is_active', true)->first();
         $majors = Major::where('is_active', true)->withCount('registrations')->get();
 
-        // 1. Statistik 4 Kartu Metrik Utama (Sesuai Gambar Referensi)
-        $totalRegistrations = Registration::count();
-        $acceptedCount = Registration::where('status', 'accepted')->count();
-        $pendingTestCount = Registration::where('status', 'pending')->count();
-        
+        // 1. Statistik 4 Kartu Metrik Utama (1 Query Agregasi Terindeks)
+        $statusCounts = Registration::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $totalRegistrations = (int) $statusCounts->sum();
+        $acceptedCount = (int) ($statusCounts['accepted'] ?? 0);
+        $pendingTestCount = (int) ($statusCounts['pending'] ?? 0);
+
         // Jumlah siswa unik yang sudah bayar (bukan jumlah transaksi)
         $paidCount = Registration::whereHas('payments', function ($q) {
             $q->whereIn('status', ['confirmed', 'success']);
         })->count();
 
         $totalQueue = $pendingTestCount;
-        $totalVerified = Registration::where('status', 'verified')->count();
+        $totalVerified = (int) ($statusCounts['verified'] ?? 0);
         $totalAccepted = $acceptedCount;
-        $totalNeedsFix = Registration::where('status', 'rejected')->count();
+        $totalNeedsFix = (int) ($statusCounts['rejected'] ?? 0);
 
         // Data Grafik Pendaftar per Jurusan
         $chartMajorNames = $majors->pluck('name')->toArray();
-        $chartMajorAliases = $majors->map(fn($m) => $m->alias ?: $m->name)->toArray();
+        $chartMajorAliases = $majors->map(fn ($m) => $m->alias ?: $m->name)->toArray();
         $chartMajorCounts = $majors->pluck('registrations_count')->toArray();
         $chartMajorQuotas = $majors->pluck('quota')->toArray();
 
-        // Data Grafik Asal Sekolah SMP (dengan normalisasi kosakata ke 1 default standar)
-        $schoolRegistrations = StudentSchool::whereNotNull('asal_sekolah')
+        // Data Grafik Asal Sekolah SMP (menggunakan covering index tanpa hydrate model)
+        $schoolNamesRaw = StudentSchool::query()
+            ->whereNotNull('asal_sekolah')
             ->where('asal_sekolah', '!=', '')
             ->where('asal_sekolah', '!=', '-')
-            ->get();
+            ->pluck('asal_sekolah');
 
-        $schoolGroups = $schoolRegistrations->map(function ($s) {
-            return StudentSchool::normalizeSchoolName($s->asal_sekolah);
+        $schoolGroups = $schoolNamesRaw->map(function ($asalSekolah) {
+            return StudentSchool::normalizeSchoolName($asalSekolah);
         })->filter(function ($name) {
             return $name !== 'TIDAK DIKETAHUI';
         })->countBy()->sortDesc();
@@ -79,11 +85,11 @@ class DashboardController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('registration_number', 'like', "%{$search}%")
-                  ->orWhereHas('user', function ($uq) use ($search) {
-                      $uq->where('name', 'like', "%{$search}%")
-                         ->orWhere('phone', 'like', "%{$search}%")
-                         ->orWhere('nisn', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('user', function ($uq) use ($search) {
+                        $uq->where('name', 'like', "%{$search}%")
+                            ->orWhere('phone', 'like', "%{$search}%")
+                            ->orWhere('nisn', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -92,8 +98,8 @@ class DashboardController extends Controller
         // 3. Data Pembayaran
         $payments = Payment::with(['registration.user', 'registration.major'])->latest()->paginate(10);
 
-        // 4. Pengaturan Sistem
-        $settings = SystemSetting::pluck('value', 'key');
+        // 4. Pengaturan Sistem (Dari Memoized Cache)
+        $settings = collect(SystemSetting::allCached());
 
         $currentView = $request->get('view', 'dashboard');
         $profileTab = $request->get('tab', 'profile');
@@ -168,7 +174,7 @@ class DashboardController extends Controller
             'notes' => $request->notes,
         ]);
 
-        return back()->with('success', "Status dokumen " . ucwords(str_replace('_', ' ', $document->document_type)) . " diperbarui.");
+        return back()->with('success', 'Status dokumen '.ucwords(str_replace('_', ' ', $document->document_type)).' diperbarui.');
     }
 
     /**
@@ -179,7 +185,7 @@ class DashboardController extends Controller
         $fields = [
             'school_npsn', 'school_name', 'school_level', 'school_status',
             'school_address', 'school_phone', 'school_email', 'school_website',
-            'school_principal_name', 'school_principal_nip'
+            'school_principal_name', 'school_principal_nip',
         ];
 
         foreach ($fields as $field) {
@@ -220,7 +226,7 @@ class DashboardController extends Controller
 
         $registrations = $query->get();
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.print_all', compact('registrations', 'academicYear', 'settings'));
     }
@@ -230,9 +236,16 @@ class DashboardController extends Controller
      */
     public function printStudentCard($id)
     {
-        $registration = Registration::with(['user', 'major', 'majorChoice2', 'biodata', 'school', 'parent', 'academicYear', 'documents'])
-            ->findOrFail($id);
-        $settings = SystemSetting::pluck('value', 'key');
+        $registration = Registration::with([
+            'user',
+            'major',
+            'biodata',
+            'school',
+            'parent',
+            'academicYear',
+            'documents' => fn ($q) => $q->where('document_type', 'pas_foto'),
+        ])->findOrFail($id);
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.print_card', compact('registration', 'settings'));
     }

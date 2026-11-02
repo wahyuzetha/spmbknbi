@@ -2297,7 +2297,7 @@
                                 <div class="pt-3 border-t border-emerald-200/80 text-xs text-slate-600 flex items-center justify-between">
                                     <span>Pendaftar di TP ini:</span>
                                     <span class="font-extrabold text-slate-900 text-sm bg-white px-2.5 py-0.5 rounded border border-emerald-200">
-                                        {{ $academicYear ? $academicYear->registrations()->count() : 0 }} Siswa
+                                        {{ $academicYear ? ($academicYear->registrations_count ?? $totalRegistrations ?? 0) : 0 }} Siswa
                                     </span>
                                 </div>
                             </div>

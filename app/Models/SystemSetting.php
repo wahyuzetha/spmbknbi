@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class SystemSetting extends Model
 {
     use HasFactory;
+
+    public const CACHE_KEY = 'spmb_system_settings_all';
+
+    /**
+     * In-memory memoization untuk mencegah N+1 query saat render > 500 calon siswa.
+     *
+     * @var array<string, mixed>|null
+     */
+    protected static ?array $memoizedSettings = null;
 
     protected $table = 'pengaturan_sistem';
 
@@ -19,16 +29,63 @@ class SystemSetting extends Model
         'label',
     ];
 
+    protected static function booted(): void
+    {
+        static::saved(function (): void {
+            static::clearCache();
+        });
+
+        static::deleted(function (): void {
+            static::clearCache();
+        });
+    }
+
+    /**
+     * Ambil seluruh pengaturan sistem dari memori / cache (0 query berulang).
+     *
+     * @return array<string, mixed>
+     */
+    public static function allCached(): array
+    {
+        if (static::$memoizedSettings !== null) {
+            return static::$memoizedSettings;
+        }
+
+        try {
+            static::$memoizedSettings = Cache::remember(static::CACHE_KEY, 3600, function (): array {
+                return static::query()->pluck('value', 'key')->toArray();
+            });
+        } catch (\Throwable $e) {
+            static::$memoizedSettings = [];
+        }
+
+        return static::$memoizedSettings;
+    }
+
+    /**
+     * Bersihkan cache pengaturan sistem saat ada pembaruan.
+     */
+    public static function clearCache(): void
+    {
+        static::$memoizedSettings = null;
+
+        try {
+            Cache::forget(static::CACHE_KEY);
+        } catch (\Throwable $e) {
+            // Abaikan jika tabel cache belum siap saat migrasi awal
+        }
+    }
+
     public static function get(string $key, mixed $default = null): mixed
     {
-        $setting = static::where('key', $key)->first();
+        $all = static::allCached();
 
-        return $setting ? $setting->value : $default;
+        return array_key_exists($key, $all) ? $all[$key] : $default;
     }
 
     public static function set(string $key, mixed $value, string $group = 'general', string $type = 'text', ?string $label = null): self
     {
-        return static::updateOrCreate(
+        $setting = static::updateOrCreate(
             ['key' => $key],
             [
                 'value' => $value,
@@ -37,6 +94,10 @@ class SystemSetting extends Model
                 'label' => $label ?? ucwords(str_replace('_', ' ', $key)),
             ]
         );
+
+        static::clearCache();
+
+        return $setting;
     }
 
     /**

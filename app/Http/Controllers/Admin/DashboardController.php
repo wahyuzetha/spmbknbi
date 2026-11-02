@@ -31,21 +31,28 @@ class DashboardController extends Controller
      */
     public function index(Request $request)
     {
-        $academicYear = AcademicYear::where('is_active', true)->first();
+        $currentView = $request->get('view', 'dashboard');
+        $profileTab = $request->get('tab', 'profile');
+
+        $academicYear = AcademicYear::withCount('registrations')->where('is_active', true)->first();
         $allAcademicYears = AcademicYear::withCount('registrations')->orderBy('id', 'desc')->get();
 
-        // 1. Statistik 4 Kartu Metrik Utama (Sesuai Gambar Referensi)
-        $totalRegistrations = Registration::count();
-        $acceptedCount = Registration::where('status', 'accepted')->count();
-        $pendingTestCount = Registration::where('status', 'pending')->count();
+        // 1. Statistik 4 Kartu Metrik Utama (1 Query Agregasi Terindeks untuk > 500 Siswa)
+        $statusCounts = Registration::query()
+            ->selectRaw('status, COUNT(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $totalRegistrations = (int) $statusCounts->sum();
+        $acceptedCount = (int) ($statusCounts['accepted'] ?? 0);
+        $pendingTestCount = (int) ($statusCounts['pending'] ?? 0);
+        $verifiedCount = (int) ($statusCounts['verified'] ?? 0);
+        $rejectedCount = (int) ($statusCounts['rejected'] ?? 0);
 
         // Jumlah siswa unik yang sudah bayar (bukan jumlah transaksi)
         $paidCount = Registration::whereHas('payments', function ($q) {
             $q->whereIn('status', ['confirmed', 'success']);
         })->count();
-
-        $verifiedCount = Registration::where('status', 'verified')->count();
-        $rejectedCount = Registration::where('status', 'rejected')->count();
 
         // 2. Statistik & Data Jurusan (7 Jurusan SMK KNBI)
         $majors = Major::withCount('registrations')->get()->map(function ($major) {
@@ -60,14 +67,15 @@ class DashboardController extends Controller
         $chartMajorCounts = $majors->pluck('registrations_count')->toArray();
         $chartMajorQuotas = $majors->pluck('quota')->toArray();
 
-        // Data Grafik Asal Sekolah SMP (dengan normalisasi kosakata ke 1 default standar)
-        $schoolRegistrations = StudentSchool::whereNotNull('asal_sekolah')
+        // Data Grafik Asal Sekolah SMP (menggunakan covering index tanpa hydrate seluruh model)
+        $schoolNamesRaw = StudentSchool::query()
+            ->whereNotNull('asal_sekolah')
             ->where('asal_sekolah', '!=', '')
             ->where('asal_sekolah', '!=', '-')
-            ->get();
+            ->pluck('asal_sekolah');
 
-        $schoolGroups = $schoolRegistrations->map(function ($s) {
-            return StudentSchool::normalizeSchoolName($s->asal_sekolah);
+        $schoolGroups = $schoolNamesRaw->map(function ($asalSekolah) {
+            return StudentSchool::normalizeSchoolName($asalSekolah);
         })->filter(function ($name) {
             return $name !== 'TIDAK DIKETAHUI';
         })->countBy()->sortDesc();
@@ -77,20 +85,19 @@ class DashboardController extends Controller
         $totalUniqueSchools = $schoolGroups->count();
 
         // 3. Query Pendaftar dengan Filter & Pencarian
-        $query = Registration::with(['user', 'major', 'secondChoiceMajor', 'biodata', 'school', 'parent', 'documents', 'verifier'])
-            ->latest();
+        $baseFilterQuery = Registration::query()->latest();
 
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            $baseFilterQuery->where('status', $request->status);
         }
 
         if ($request->filled('major_id')) {
-            $query->where('major_id', $request->major_id);
+            $baseFilterQuery->where('major_id', $request->major_id);
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $baseFilterQuery->where(function ($q) use ($search) {
                 $q->where('registration_number', 'like', "%{$search}%")
                     ->orWhereHas('user', function ($uq) use ($search) {
                         $uq->where('name', 'like', "%{$search}%")
@@ -100,9 +107,19 @@ class DashboardController extends Controller
             });
         }
 
-        // Calon siswa & pendaftar: paginasi maksimal 10 per halaman sesuai instruksi user
-        $allCalonSiswa = (clone $query)->get();
-        $registrations = $query->paginate(10)->withQueryString();
+        // Hanya muat koleksi penuh calon siswa saat berada di menu calon_siswa / pendaftar / diterima
+        if (in_array($currentView, ['calon_siswa', 'pendaftar', 'diterima'], true)) {
+            $allCalonSiswa = (clone $baseFilterQuery)
+                ->with(['user', 'major', 'biodata', 'school', 'parent'])
+                ->get();
+        } else {
+            $allCalonSiswa = collect();
+        }
+
+        $registrations = (clone $baseFilterQuery)
+            ->with(['user', 'major', 'secondChoiceMajor', 'biodata', 'school', 'parent', 'documents', 'verifier'])
+            ->paginate(10)
+            ->withQueryString();
 
         // 4. Data Pengguna Staf (Panitia PPDB, Bendahara SPMB & Administrator) untuk Halaman Data Pengguna
         $staffUsers = User::whereIn('role', ['admin', 'panitia', 'bendahara'])->latest()->get();
@@ -146,21 +163,23 @@ class DashboardController extends Controller
         $totalTransaksi = $allPayments->count();
         $multiTransactionCount = $groupedPayments->where('is_multi', true)->count();
 
-        // Data seluruh calon siswa untuk pencarian cepat dropdown input kasir/bendahara
-        $candidatesForPayment = Registration::with(['user', 'major', 'school'])
-            ->latest()
-            ->get()
-            ->map(function ($r) {
-                return (object) [
-                    'id' => $r->id,
-                    'registration_number' => $r->registration_number,
-                    'name' => $r->user->name ?? 'Calon Siswa',
-                    'phone' => $r->user->phone ?? '-',
-                    'school' => $r->school->asal_sekolah ?? '-',
-                    'major' => $r->major->name ?? '-',
-                    'industry_class' => $r->major->industry_class ?? '',
-                ];
-            });
+        // Data seluruh calon siswa untuk pencarian cepat dropdown input kasir/bendahara (1 Query Join Ringan tanpa Hydrate Model)
+        $candidatesForPayment = DB::table('pendaftaran')
+            ->leftJoin('siswa', 'pendaftaran.user_id', '=', 'siswa.id')
+            ->leftJoin('jurusan', 'pendaftaran.major_id', '=', 'jurusan.id')
+            ->leftJoin('asal_sekolah_siswa', 'pendaftaran.id', '=', 'asal_sekolah_siswa.registration_id')
+            ->select([
+                'pendaftaran.id',
+                'pendaftaran.registration_number',
+                DB::raw("COALESCE(siswa.name, 'Calon Siswa') as name"),
+                DB::raw("COALESCE(siswa.phone, '-') as phone"),
+                DB::raw("COALESCE(asal_sekolah_siswa.asal_sekolah, '-') as school"),
+                DB::raw("COALESCE(jurusan.name, '-') as major"),
+                DB::raw("COALESCE(jurusan.industry_class, '') as industry_class"),
+            ])
+            ->orderByDesc('pendaftaran.created_at')
+            ->orderByDesc('pendaftaran.id')
+            ->get();
 
         $payments = Payment::with('registration.user')->latest()->paginate(10);
 
@@ -169,11 +188,8 @@ class DashboardController extends Controller
         $totalPengeluaran = (float) Expense::sum('amount');
         $saldoKas = (float) ($totalKasMasuk - $totalPengeluaran);
 
-        // 7. Pengaturan Sistem & Profil Sekolah
-        $settings = SystemSetting::pluck('value', 'key');
-
-        $currentView = $request->get('view', 'dashboard');
-        $profileTab = $request->get('tab', 'profile');
+        // 7. Pengaturan Sistem & Profil Sekolah (Dari Memoized Cache)
+        $settings = collect(SystemSetting::allCached());
 
         // 8. Konten & Media Jurusan (Foto Praktikum, Video, Keunggulan)
         $selectedMajorId = $request->get('major_id');
@@ -958,7 +974,7 @@ class DashboardController extends Controller
 
         $registrations = $query->get();
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.print_all', compact('registrations', 'academicYear', 'settings'));
     }
@@ -968,9 +984,16 @@ class DashboardController extends Controller
      */
     public function printStudentCard($id)
     {
-        $registration = Registration::with(['user', 'major', 'majorChoice2', 'biodata', 'school', 'parent', 'academicYear', 'documents'])
-            ->findOrFail($id);
-        $settings = SystemSetting::pluck('value', 'key');
+        $registration = Registration::with([
+            'user',
+            'major',
+            'biodata',
+            'school',
+            'parent',
+            'academicYear',
+            'documents' => fn ($q) => $q->where('document_type', 'pas_foto'),
+        ])->findOrFail($id);
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.print_card', compact('registration', 'settings'));
     }
@@ -1300,30 +1323,36 @@ class DashboardController extends Controller
     }
 
     /**
-     * Hapus Data Calon Siswa secara Massal (Bulk Delete).
+     * Hapus Data Calon Siswa secara Massal (Bulk Delete Teroptimasi untuk Ratusan Siswa).
      */
     public function bulkDeleteStudents(Request $request)
     {
-        $ids = $request->input('ids', []);
+        $ids = array_values(array_filter(array_map('intval', (array) $request->input('ids', []))));
         if (empty($ids)) {
             return back()->with('error', 'Silakan pilih setidaknya satu data calon siswa untuk dihapus.');
         }
 
-        $count = 0;
-        foreach ($ids as $id) {
-            $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents', 'payments'])->find($id);
-            if ($registration) {
-                $user = $registration->user;
-                $registration->biodata?->delete();
-                $registration->school?->delete();
-                $registration->parent?->delete();
-                $registration->documents()->delete();
-                $registration->payments()->delete();
-                $registration->delete();
-                $user?->delete();
-                $count++;
-            }
+        $registrations = Registration::whereIn('id', $ids)->get(['id', 'user_id']);
+        if ($registrations->isEmpty()) {
+            return back()->with('error', 'Data calon siswa yang dipilih tidak ditemukan.');
         }
+
+        $regIds = $registrations->pluck('id')->all();
+        $userIds = $registrations->pluck('user_id')->filter()->unique()->values()->all();
+        $count = count($regIds);
+
+        DB::transaction(function () use ($regIds, $userIds): void {
+            StudentBiodata::whereIn('registration_id', $regIds)->delete();
+            StudentSchool::whereIn('registration_id', $regIds)->delete();
+            StudentParent::whereIn('registration_id', $regIds)->delete();
+            DB::table('dokumen_siswa')->whereIn('registration_id', $regIds)->delete();
+            Payment::whereIn('registration_id', $regIds)->delete();
+            Registration::whereIn('id', $regIds)->delete();
+
+            if (! empty($userIds)) {
+                Siswa::whereIn('id', $userIds)->delete();
+            }
+        });
 
         return back()->with('success', "Sebanyak {$count} data calon siswa berhasil dihapus secara massal.");
     }
@@ -1380,7 +1409,7 @@ class DashboardController extends Controller
 
         $registration = $payment->registration;
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_receipt', compact('payment', 'registration', 'settings', 'academicYear'));
     }
@@ -1396,7 +1425,7 @@ class DashboardController extends Controller
         $confirmedPayments = $registration->payments->where('status', 'confirmed')->sortBy('payment_date');
         $totalPaid = $confirmedPayments->sum('amount');
         $academicYear = AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
     }

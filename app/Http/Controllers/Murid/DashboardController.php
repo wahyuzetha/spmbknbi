@@ -30,7 +30,7 @@ class DashboardController extends Controller
                 'documents',
                 'payments' => function ($q) {
                     $q->with('confirmedBy')->latest('payment_date')->latest('id');
-                }
+                },
             ])
             ->first();
 
@@ -46,7 +46,7 @@ class DashboardController extends Controller
         $completedRequiredCount = count(array_intersect($requiredDocs, $uploadedDocs));
         $progressPercentage = round(($completedRequiredCount / count($requiredDocs)) * 100);
 
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('murid.dashboard', compact(
             'user',
@@ -84,7 +84,7 @@ class DashboardController extends Controller
         $mimeType = $file->getClientMimeType();
 
         // Simpan ke storage public
-        $path = $file->store('documents/' . $registration->registration_number, 'public');
+        $path = $file->store('documents/'.$registration->registration_number, 'public');
 
         // Update or Create data dokumen
         StudentDocument::updateOrCreate(
@@ -102,7 +102,7 @@ class DashboardController extends Controller
             ]
         );
 
-        return back()->with('success', 'Dokumen ' . ucwords(str_replace('_', ' ', $request->input('document_type'))) . ' berhasil diunggah.');
+        return back()->with('success', 'Dokumen '.ucwords(str_replace('_', ' ', $request->input('document_type'))).' berhasil diunggah.');
     }
 
     /**
@@ -112,7 +112,14 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $registration = $user->registration()
-            ->with(['academicYear', 'major', 'biodata', 'parents', 'parent', 'school', 'documents'])
+            ->with([
+                'academicYear',
+                'major',
+                'biodata',
+                'parent',
+                'school',
+                'documents' => fn ($q) => $q->where('document_type', 'pas_foto'),
+            ])
             ->firstOrFail();
 
         // Catat waktu cetak
@@ -120,7 +127,7 @@ class DashboardController extends Controller
             $registration->update(['printed_card_at' => now()]);
         }
 
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('murid.cetak-kartu', compact('user', 'registration', 'settings'));
     }
@@ -138,7 +145,7 @@ class DashboardController extends Controller
             ->findOrFail($id);
 
         $academicYear = $registration->academicYear ?? AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_receipt', compact('payment', 'registration', 'settings', 'academicYear'));
     }
@@ -156,7 +163,7 @@ class DashboardController extends Controller
         $confirmedPayments = $registration->payments->where('status', 'confirmed')->sortBy('payment_date');
         $totalPaid = $confirmedPayments->sum('amount');
         $academicYear = $registration->academicYear ?? AcademicYear::where('is_active', true)->first();
-        $settings = SystemSetting::pluck('value', 'key');
+        $settings = collect(SystemSetting::allCached());
 
         return view('admin.payment_global_receipt', compact('registration', 'confirmedPayments', 'totalPaid', 'settings', 'academicYear'));
     }

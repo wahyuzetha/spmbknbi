@@ -59,6 +59,7 @@ class MultiTableUserProvider implements UserProvider
         }
 
         $rememberToken = $user->getRememberToken();
+
         return $rememberToken && hash_equals($rememberToken, $token) ? $user : null;
     }
 
@@ -95,11 +96,13 @@ class MultiTableUserProvider implements UserProvider
             if (session()->isStarted()) {
                 session(['auth_model_type' => 'petugas']);
             }
+
             return $petugas;
         }
 
         // 2. Cek pada tabel siswa (Calon Siswa Baru)
         $siswa = Siswa::where('email', $identity)
+            ->orWhere('username', $identity)
             ->orWhere('nisn', $identity)
             ->orWhere('phone', $identity)
             ->first();
@@ -108,6 +111,7 @@ class MultiTableUserProvider implements UserProvider
             if (session()->isStarted()) {
                 session(['auth_model_type' => 'siswa']);
             }
+
             return $siswa;
         }
 
@@ -120,6 +124,7 @@ class MultiTableUserProvider implements UserProvider
     public function validateCredentials(Authenticatable $user, array $credentials)
     {
         $plain = $credentials['password'];
+
         return Hash::check($plain, $user->getAuthPassword());
     }
 

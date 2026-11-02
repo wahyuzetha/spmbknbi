@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class Registration extends Model
@@ -137,10 +138,11 @@ class Registration extends Model
         if ($customSequence && $customSequence > 0) {
             $nextSeq = $customSequence;
         } else {
-            // Ambil seluruh nomor pendaftaran yang memiliki prefix tahun & jurusan ini
+            // Ambil seluruh nomor pendaftaran yang memiliki prefix tahun & jurusan ini (dengan lock saat transaksi konkuren)
             $existingNumbers = static::query()
                 ->where('registration_number', 'like', $prefix.'%')
                 ->when($ignoreRegistrationId, fn ($q) => $q->where('id', '!=', $ignoreRegistrationId))
+                ->when(DB::transactionLevel() > 0, fn ($q) => $q->lockForUpdate())
                 ->pluck('registration_number');
 
             $maxSeq = 0;

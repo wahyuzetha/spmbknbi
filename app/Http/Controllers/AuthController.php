@@ -209,6 +209,7 @@ class AuthController extends Controller
             ->orWhere('phone', $identity)
             ->first()
             ?? Siswa::where('email', $identity)
+                ->orWhere('username', $identity)
                 ->orWhere('nisn', $identity)
                 ->orWhere('phone', $identity)
                 ->first();
