@@ -243,4 +243,69 @@ class HighVolumePerformanceTest extends TestCase
 
         $newRegResponse->assertStatus(200)->assertJson(['success' => true]);
     }
+
+    public function test_database_manager_browser_dapat_mereset_data_siswa_dan_pembayaran_saat_ganti_tahun_ajaran_baru()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $this->seedBulkStudents(20);
+
+        DB::table('pembayaran')->insert([
+            'registration_id' => Registration::first()->id,
+            'invoice_number' => 'INV-RESET-001',
+            'payment_type' => 'pendaftaran',
+            'amount' => 250000,
+            'payment_method' => 'cash',
+            'status' => 'confirmed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertGreaterThan(0, Siswa::count());
+        $this->assertGreaterThan(0, Registration::count());
+        $this->assertGreaterThan(0, DB::table('pembayaran')->count());
+
+        // 1. Buka halaman Database Manager Browser & pastikan tombol reset tampil
+        $dbView = $this->actingAs($admin)->get(route('admin.database'));
+        $dbView->assertStatus(200);
+        $dbView->assertSee('Reset Data Siswa & Pembayaran', false);
+        $dbView->assertSee('Kembalikan ke Default Awal / Kosong', false);
+
+        // 2. Uji konfirmasi salah -> data tidak boleh terhapus
+        $invalidRes = $this->actingAs($admin)->post(route('admin.database.reset'), [
+            'reset_scope' => 'all',
+            'confirm_text' => 'SALAH',
+        ]);
+        $invalidRes->assertSessionHas('error');
+        $this->assertGreaterThan(0, Registration::count());
+
+        // 3. Uji Reset Pembayaran Saja -> pembayaran jadi 0, siswa tetap ada
+        $payResetRes = $this->actingAs($admin)->post(route('admin.database.reset'), [
+            'reset_scope' => 'payments_only',
+            'confirm_text' => 'RESET',
+        ]);
+        $payResetRes->assertSessionHas('success');
+        $this->assertEquals(0, DB::table('pembayaran')->count());
+        $this->assertGreaterThan(0, Registration::count());
+
+        // 4. Uji Reset Semua (Siswa & Pembayaran) + Ganti Tahun Ajaran Baru
+        $allResetRes = $this->actingAs($admin)->post(route('admin.database.reset'), [
+            'reset_scope' => 'all',
+            'confirm_text' => 'RESET',
+            'new_academic_year' => '2027/2028',
+        ]);
+        $allResetRes->assertSessionHas('success');
+
+        $this->assertEquals(0, Siswa::count());
+        $this->assertEquals(0, Registration::count());
+        $this->assertEquals(0, DB::table('biodata_siswa')->count());
+        $this->assertEquals(0, DB::table('orang_tua_siswa')->count());
+        $this->assertEquals(0, DB::table('asal_sekolah_siswa')->count());
+        $this->assertEquals(0, DB::table('dokumen_siswa')->count());
+        $this->assertEquals(0, DB::table('pembayaran')->count());
+
+        // Pastikan data Master (Admin/Panitia & Jurusan) tetap aman dan TP baru aktif
+        $this->assertGreaterThan(0, User::count());
+        $this->assertGreaterThan(0, Major::count());
+        $this->assertEquals('2027/2028', AcademicYear::where('is_active', true)->value('name'));
+    }
 }

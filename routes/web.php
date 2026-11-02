@@ -135,4 +135,5 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
 
 // 7. Database Viewer Browser (Langsung Dibuka di Browser)
 Route::get('/admin/database', [DatabaseViewerController::class, 'index'])->name('admin.database');
+Route::post('/admin/database/reset', [DatabaseViewerController::class, 'resetData'])->middleware(['auth', 'role:admin'])->name('admin.database.reset');
 Route::get('/database', [DatabaseViewerController::class, 'index'])->name('database.viewer');

@@ -54,11 +54,20 @@
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            <span class="text-[11px] text-slate-300 font-mono bg-[#222d32] px-3 py-1 rounded-md border border-white/10 hidden sm:inline-flex items-center gap-1.5">
+        <div class="flex items-center gap-2.5">
+            @if(!empty($activeAcademicYear))
+                <span class="text-[11px] text-emerald-300 font-semibold bg-emerald-950/60 px-3 py-1 rounded-md border border-emerald-500/30 hidden md:inline-flex items-center gap-1.5">
+                    <i class="fa-solid fa-calendar-check text-emerald-400"></i>
+                    TP Aktif: <strong class="font-mono text-white">{{ $activeAcademicYear->name }}</strong>
+                </span>
+            @endif
+            <span class="text-[11px] text-slate-300 font-mono bg-[#222d32] px-3 py-1 rounded-md border border-white/10 hidden lg:inline-flex items-center gap-1.5">
                 <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 127.0.0.1:3306 (MySQL)
             </span>
+            <button type="button" onclick="openResetModal('all')" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg transition flex items-center gap-1.5 shadow cursor-pointer">
+                <i class="fa-solid fa-rotate-left"></i> Reset Data Siswa & Pembayaran
+            </button>
             <a href="{{ route('admin.dashboard') }}" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition flex items-center gap-1.5 shadow">
                 <i class="fa-solid fa-arrow-left"></i> Kembali ke Dashboard
             </a>
@@ -131,6 +140,73 @@
 
             <!-- CONTAINER KONTEN -->
             <div class="flex-1 overflow-y-auto custom-scroll p-6 space-y-5">
+
+                <!-- FLASH NOTIFICATIONS -->
+                @if(session('success'))
+                    <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start justify-between gap-3 shadow-sm">
+                        <div class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-base mt-0.5"></i>
+                            <div>
+                                <div class="font-extrabold text-emerald-950">Berhasil!</div>
+                                <div class="mt-0.5 font-medium">{{ session('success') }}</div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-900">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('error') || $errors->any())
+                    <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start justify-between gap-3 shadow-sm">
+                        <div class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base mt-0.5"></i>
+                            <div>
+                                <div class="font-extrabold text-rose-950">Perhatian!</div>
+                                <div class="mt-0.5 font-medium">
+                                    {{ session('error') ?? $errors->first() }}
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="this.parentElement.remove()" class="text-rose-600 hover:text-rose-900">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                @endif
+
+                <!-- PANEL AKSI CEPAT: RESET DATA TAHUN AJARAN BARU -->
+                <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl p-4 border border-slate-700/80 shadow-sm text-white flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div class="flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400 shrink-0 mt-0.5">
+                            <i class="fa-solid fa-broom text-lg"></i>
+                        </div>
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h2 class="text-xs sm:text-sm font-extrabold text-white">
+                                    Reset Data Siswa & Pembayaran (Pergantian Tahun Ajaran Baru)
+                                </h2>
+                                <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                                    Kembalikan ke Default Awal / Kosong
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                                Kosongkan data calon siswa pendaftar (<span class="font-mono text-emerald-300">{{ number_format($resetSummary['pendaftaran'] ?? 0) }}</span> pendaftaran, <span class="font-mono text-emerald-300">{{ number_format($resetSummary['siswa'] ?? 0) }}</span> akun siswa) dan/atau riwayat pembayaran (<span class="font-mono text-amber-300">{{ number_format($resetSummary['pembayaran'] ?? 0) }}</span> transaksi) ke kondisi awal (<span class="font-mono">0 records</span>) tanpa menghapus akun Admin/Panitia, Jurusan, maupun Pengaturan Sekolah.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <button type="button" onclick="openResetModal('students_only')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-user-xmark text-amber-400"></i> Reset Data Siswa Saja
+                        </button>
+                        <button type="button" onclick="openResetModal('payments_only')" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-file-invoice-dollar text-amber-400"></i> Reset Pembayaran Saja
+                        </button>
+                        <button type="button" onclick="openResetModal('all')" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-extrabold transition flex items-center gap-1.5 shadow-lg shadow-rose-950/50 cursor-pointer">
+                            <i class="fa-solid fa-rotate-left"></i> Reset Siswa & Pembayaran
+                        </button>
+                    </div>
+                </div>
 
                 <!-- ================= TAB 1: DATA TABEL ================= -->
                 <div id="section-data-tab" class="{{ request()->filled('sql') ? 'hidden' : '' }} space-y-4">
@@ -278,9 +354,10 @@
                             </h3>
                             <div class="flex items-center gap-1.5 text-xs">
                                 <span class="text-slate-400 font-medium">Contoh Snippet:</span>
-                                <button type="button" onclick="setQuery('SELECT * FROM users LIMIT 10;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">users</button>
-                                <button type="button" onclick="setQuery('SELECT * FROM majors;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">majors</button>
-                                <button type="button" onclick="setQuery('SELECT * FROM registrations ORDER BY id DESC LIMIT 10;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">registrations</button>
+                                <button type="button" onclick="setQuery('SELECT * FROM siswa LIMIT 10;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">siswa</button>
+                                <button type="button" onclick="setQuery('SELECT * FROM pendaftaran ORDER BY id DESC LIMIT 10;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">pendaftaran</button>
+                                <button type="button" onclick="setQuery('SELECT * FROM pembayaran ORDER BY id DESC LIMIT 10;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">pembayaran</button>
+                                <button type="button" onclick="setQuery('SELECT * FROM jurusan;')" class="px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 font-mono text-[10px] text-blue-700">jurusan</button>
                             </div>
                         </div>
 
@@ -357,8 +434,168 @@
 
     </div>
 
+    <!-- ================= MODAL RESET DATA SISWA & PEMBAYARAN (TAHUN AJARAN BARU) ================= -->
+    <div id="reset-data-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/75 backdrop-blur-xs p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full overflow-hidden">
+            <!-- Header Modal -->
+            <div class="bg-gradient-to-r from-rose-600 to-red-700 px-6 py-4 text-white flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white text-lg shadow-inner">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold">Reset Data Siswa & Pembayaran</h3>
+                        <p class="text-[11px] text-rose-100">Kembalikan database pendaftar & transaksi ke kondisi default awal / kosong</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeResetModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Form Reset -->
+            <form action="{{ route('admin.database.reset') }}" method="POST" class="p-6 space-y-4 text-xs">
+                @csrf
+                <input type="hidden" name="current_table" value="{{ $selectedTable }}">
+
+                <!-- Ringkasan Jumlah Data Saat Ini -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                    <div class="font-bold text-slate-700 mb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-chart-pie text-emerald-600 mr-1"></i> Ringkasan Data Saat Ini di Database:</span>
+                        <span class="text-[10px] text-slate-500 font-mono">TP Aktif: {{ $activeAcademicYear->name ?? '-' }}</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        <div class="bg-white p-2 rounded-lg border border-slate-200">
+                            <div class="text-[10px] text-slate-500">Akun Siswa</div>
+                            <div class="text-sm font-black font-mono text-slate-900">{{ number_format($resetSummary['siswa'] ?? 0) }}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-slate-200">
+                            <div class="text-[10px] text-slate-500">Pendaftaran</div>
+                            <div class="text-sm font-black font-mono text-emerald-700">{{ number_format($resetSummary['pendaftaran'] ?? 0) }}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-slate-200">
+                            <div class="text-[10px] text-slate-500">Pembayaran</div>
+                            <div class="text-sm font-black font-mono text-amber-600">{{ number_format($resetSummary['pembayaran'] ?? 0) }}</div>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-slate-200">
+                            <div class="text-[10px] text-slate-500">Pengeluaran Kas</div>
+                            <div class="text-sm font-black font-mono text-rose-600">{{ number_format($resetSummary['pengeluaran'] ?? 0) }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pilihan Cakupan Reset -->
+                <div class="space-y-2">
+                    <label class="block font-extrabold text-slate-800">1. Pilih Data yang Ingin Direset (Dikembalikan ke Kosong / 0):</label>
+
+                    <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-slate-200 hover:border-rose-400 cursor-pointer transition has-[:checked]:border-rose-600 has-[:checked]:bg-rose-50/50">
+                        <input type="radio" name="reset_scope" id="scope-all" value="all" checked class="mt-0.5 accent-rose-600">
+                        <div>
+                            <div class="font-extrabold text-slate-900">Reset Semua: Data Siswa + Pembayaran & Kas (Rekomendasi Tahun Ajaran Baru)</div>
+                            <div class="text-[11px] text-slate-600 mt-0.5">
+                                Mengosongkan tabel <code class="font-mono text-rose-700">siswa</code>, <code class="font-mono text-rose-700">pendaftaran</code>, <code class="font-mono text-rose-700">biodata_siswa</code>, <code class="font-mono text-rose-700">orang_tua_siswa</code>, <code class="font-mono text-rose-700">asal_sekolah_siswa</code>, <code class="font-mono text-rose-700">dokumen_siswa</code>, <code class="font-mono text-rose-700">pembayaran</code>, & <code class="font-mono text-rose-700">pengeluaran</code>.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-slate-200 hover:border-amber-400 cursor-pointer transition has-[:checked]:border-amber-600 has-[:checked]:bg-amber-50/50">
+                        <input type="radio" name="reset_scope" id="scope-students" value="students_only" class="mt-0.5 accent-amber-600">
+                        <div>
+                            <div class="font-extrabold text-slate-900">Reset Data Calon Siswa & Berkas Pendaftaran Saja</div>
+                            <div class="text-[11px] text-slate-600 mt-0.5">
+                                Mengosongkan tabel <code class="font-mono text-amber-800">siswa</code>, <code class="font-mono text-amber-800">pendaftaran</code>, <code class="font-mono text-amber-800">biodata_siswa</code>, <code class="font-mono text-amber-800">orang_tua_siswa</code>, <code class="font-mono text-amber-800">asal_sekolah_siswa</code>, & <code class="font-mono text-amber-800">dokumen_siswa</code>.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-start gap-3 p-3 rounded-xl border-2 border-slate-200 hover:border-amber-400 cursor-pointer transition has-[:checked]:border-amber-600 has-[:checked]:bg-amber-50/50">
+                        <input type="radio" name="reset_scope" id="scope-payments" value="payments_only" class="mt-0.5 accent-amber-600">
+                        <div>
+                            <div class="font-extrabold text-slate-900">Reset Data Pembayaran & Pengeluaran Kas Saja</div>
+                            <div class="text-[11px] text-slate-600 mt-0.5">
+                                Mengosongkan tabel <code class="font-mono text-amber-800">pembayaran</code> dan <code class="font-mono text-amber-800">pengeluaran</code> tanpa menghapus akun/biodata calon siswa.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Opsional: Pergantian Tahun Ajaran Baru -->
+                <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 space-y-1.5">
+                    <label for="new_academic_year" class="block font-extrabold text-emerald-950">
+                        2. Ganti Tahun Ajaran Aktif Baru <span class="text-[10px] font-normal text-emerald-700">(Opsional — kosongkan jika tidak ingin mengubah TP aktif)</span>
+                    </label>
+                    <input type="text" name="new_academic_year" id="new_academic_year" placeholder="Contoh: 2027/2028 (Kosongkan jika tetap {{ $activeAcademicYear->name ?? 'saat ini' }})"
+                           class="w-full px-3 py-2 bg-white border border-emerald-300 rounded-lg text-xs font-bold text-slate-900 focus:outline-none focus:border-emerald-600">
+                    <p class="text-[10px] text-emerald-800">
+                        <i class="fa-solid fa-shield-halved mr-1"></i> Data Master seperti <strong>Akun Admin/Panitia/Bendahara, Jurusan, Kop Surat, dan Pengaturan Sekolah</strong> dijamin <strong>AMAN (Tidak Ikut Terhapus)</strong>.
+                    </p>
+                </div>
+
+                <!-- Konfirmasi Keamanan -->
+                <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <label for="confirm_text" class="block font-extrabold text-slate-800">
+                            3. Ketik kata <span class="font-mono text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">RESET</span> untuk konfirmasi:
+                        </label>
+                        <button type="button" onclick="fillResetConfirmText()" class="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer">
+                            Isi Otomatis "RESET"
+                        </button>
+                    </div>
+                    <input type="text" name="confirm_text" id="confirm_text" required placeholder="Ketik RESET di sini..." autocomplete="off"
+                           class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600">
+                </div>
+
+                <!-- Footer Tombol -->
+                <div class="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-200">
+                    <button type="button" onclick="closeResetModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-extrabold rounded-xl shadow-lg shadow-rose-600/30 transition flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-trash-can"></i> Reset ke Default Awal (Kosong)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- SCRIPT UTILITIES -->
     <script>
+        function openResetModal(defaultScope = 'all') {
+            const modal = document.getElementById('reset-data-modal');
+            if (!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            if (defaultScope === 'students_only') {
+                document.getElementById('scope-students').checked = true;
+            } else if (defaultScope === 'payments_only') {
+                document.getElementById('scope-payments').checked = true;
+            } else {
+                document.getElementById('scope-all').checked = true;
+            }
+
+            const confirmInput = document.getElementById('confirm_text');
+            if (confirmInput) {
+                confirmInput.value = '';
+                setTimeout(() => confirmInput.focus(), 50);
+            }
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('reset-data-modal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function fillResetConfirmText() {
+            const confirmInput = document.getElementById('confirm_text');
+            if (confirmInput) {
+                confirmInput.value = 'RESET';
+                confirmInput.focus();
+            }
+        }
+
         function switchMainTab(tab) {
             const dataTab = document.getElementById('section-data-tab');
             const sqlTab = document.getElementById('section-sql-tab');
