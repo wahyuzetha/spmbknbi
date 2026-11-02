@@ -8,8 +8,6 @@ use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
 use App\Models\Siswa;
-use App\Models\StudentBiodata;
-use App\Models\StudentParent;
 use App\Models\StudentSchool;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -22,11 +20,17 @@ class BendaharaPortalTest extends TestCase
     use RefreshDatabase;
 
     protected User $bendahara;
+
     protected User $admin;
+
     protected User $panitia;
+
     protected Siswa $siswa;
+
     protected Registration $registration;
+
     protected Major $majorTKR;
+
     protected Major $majorTKJ;
 
     protected function setUp(): void
@@ -319,5 +323,64 @@ class BendaharaPortalTest extends TestCase
             'name' => 'Bendahara Kedua',
             'role' => 'bendahara',
         ]);
+    }
+
+    public function test_bendahara_can_view_and_delete_student_single_and_bulk()
+    {
+        // View calon_siswa tab
+        $viewRes = $this->actingAs($this->bendahara)->get(route('bendahara.dashboard', ['view' => 'calon_siswa']));
+        $viewRes->assertOk();
+        $viewRes->assertSee('Data Seluruh Calon Siswa Terdaftar');
+        $viewRes->assertSee('Budi Santoso');
+
+        // 1. Single delete student by Bendahara
+        $delSingle = $this->actingAs($this->bendahara)->post(route('bendahara.spmb.student.delete', $this->registration->id));
+        $delSingle->assertSessionHas('success');
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $this->registration->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $this->siswa->id]);
+
+        // 2. Bulk delete students by Bendahara
+        $siswaA = Siswa::create([
+            'name' => 'Siswa Bendahara A',
+            'username' => '081900001111',
+            'phone' => '081900001111',
+            'email' => 'siswa_ben_a@siswa.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+        $regA = Registration::create([
+            'registration_number' => '271002',
+            'user_id' => $siswaA->id,
+            'academic_year_id' => 1,
+            'major_id' => $this->majorTKR->id,
+            'status' => 'pending',
+        ]);
+
+        $siswaB = Siswa::create([
+            'name' => 'Siswa Bendahara B',
+            'username' => '081900002222',
+            'phone' => '081900002222',
+            'email' => 'siswa_ben_b@siswa.sch.id',
+            'password' => Hash::make('password'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+        $regB = Registration::create([
+            'registration_number' => '271003',
+            'user_id' => $siswaB->id,
+            'academic_year_id' => 1,
+            'major_id' => $this->majorTKJ->id,
+            'status' => 'pending',
+        ]);
+
+        $delBulk = $this->actingAs($this->bendahara)->post(route('bendahara.spmb.student.bulkDelete'), [
+            'registration_ids' => [$regA->id, $regB->id],
+        ]);
+        $delBulk->assertSessionHas('success');
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $regA->id]);
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $regB->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswaA->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswaB->id]);
     }
 }

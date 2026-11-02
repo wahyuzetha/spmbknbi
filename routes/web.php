@@ -113,11 +113,14 @@ Route::middleware(['auth', 'role:panitia'])->prefix('panitia')->name('panitia.')
     Route::post('/document/{id}/status', [PanitiaDashboardController::class, 'updateDocumentStatus'])->name('document.status');
     Route::post('/settings/update', [PanitiaDashboardController::class, 'updateSettings'])->name('settings.update');
 
-    // Export & Cetak untuk Panitia
+    // Export, Cetak & CRUD Calon Siswa untuk Panitia
     Route::get('/spmb/calon-siswa/export-excel', [PanitiaDashboardController::class, 'exportExcel'])->name('spmb.exportExcel');
     Route::get('/spmb/calon-siswa/cetak-all', [PanitiaDashboardController::class, 'printAllStudents'])->name('spmb.printAll');
     Route::get('/spmb/calon-siswa/{id}/cetak-kartu', [PanitiaDashboardController::class, 'printStudentCard'])->name('spmb.printCard');
+    Route::post('/spmb/calon-siswa/store', [AdminDashboardController::class, 'storeStudentManual'])->name('spmb.student.store');
     Route::post('/spmb/calon-siswa/{id}/update', [AdminDashboardController::class, 'updateStudentManual'])->name('spmb.student.update');
+    Route::post('/spmb/calon-siswa/{id}/delete', [AdminDashboardController::class, 'deleteStudentManual'])->name('spmb.student.delete');
+    Route::post('/spmb/calon-siswa/bulk-delete', [AdminDashboardController::class, 'bulkDeleteStudents'])->name('spmb.student.bulkDelete');
     Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
     Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
 });
@@ -133,6 +136,10 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
     Route::post('/administrasi/pengeluaran/store', [BendaharaDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
     Route::post('/administrasi/pengeluaran/{id}/update', [BendaharaDashboardController::class, 'updateExpense'])->name('administrasi.expense.update');
     Route::post('/administrasi/pengeluaran/{id}/delete', [BendaharaDashboardController::class, 'deleteExpense'])->name('administrasi.expense.delete');
+
+    // Hapus Data Calon Siswa oleh Bendahara
+    Route::post('/spmb/calon-siswa/{id}/delete', [AdminDashboardController::class, 'deleteStudentManual'])->name('spmb.student.delete');
+    Route::post('/spmb/calon-siswa/bulk-delete', [AdminDashboardController::class, 'bulkDeleteStudents'])->name('spmb.student.bulkDelete');
 });
 
 // 7. Database Viewer Browser (Langsung Dibuka di Browser)

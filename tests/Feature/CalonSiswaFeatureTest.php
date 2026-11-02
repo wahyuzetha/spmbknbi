@@ -806,10 +806,32 @@ class CalonSiswaFeatureTest extends TestCase
             'phone' => '087711112222',
             'username' => 'ahmadfauzi_panitia',
             'password' => 'panitia123',
+            'nisn' => '0099887766',
+            'email' => 'ahmadfauzi@siswa.smkknbi.sch.id',
             'gender' => 'L',
+            'nik' => '3309012345678901',
+            'no_kk' => '3309012345670001',
+            'tempat_lahir' => 'Boyolali',
+            'tanggal_lahir' => '2010-05-15',
+            'agama' => 'Islam',
+            'alamat_jalan' => 'Jl. Pandanaran No. 45',
+            'kabupaten' => 'Boyolali',
+            'provinsi' => 'Jawa Tengah',
             'asal_sekolah' => 'SMP Negeri 3 Boyolali',
+            'npsn_sekolah' => '20308455',
+            'jenis_sekolah' => 'SMP',
+            'status_sekolah' => 'Negeri',
+            'tahun_lulus' => '2026',
+            'nama_ayah' => 'Slamet Riyadi',
+            'pekerjaan_ayah' => 'Wiraswasta',
+            'no_hp_ayah' => '081234560001',
+            'nama_ibu' => 'Siti Aminah',
+            'pekerjaan_ibu' => 'Ibu Rumah Tangga',
+            'no_hp_ibu' => '081234560002',
+            'nama_wali' => 'Pakde Haryono',
+            'hubungan_wali' => 'Paman',
             'major_id' => $major->id,
-            'status' => 'pending',
+            'status' => 'accepted',
         ];
 
         $response = $this->actingAs($panitia)->post(route('panitia.spmb.student.update', $reg->id), $panitiaPayload);
@@ -819,12 +841,115 @@ class CalonSiswaFeatureTest extends TestCase
             'id' => $siswa->id,
             'name' => 'Ahmad Fauzi Panitia',
             'username' => 'ahmadfauzi_panitia',
+            'nisn' => '0099887766',
             'raw_password' => 'panitia123',
+        ]);
+
+        $this->assertDatabaseHas('biodata_siswa', [
+            'registration_id' => $reg->id,
+            'nik' => '3309012345678901',
+            'no_kk' => '3309012345670001',
+            'tempat_lahir' => 'Boyolali',
+            'kabupaten' => 'Boyolali',
         ]);
 
         $this->assertDatabaseHas('asal_sekolah_siswa', [
             'registration_id' => $reg->id,
             'asal_sekolah' => 'SMP Negeri 3 Boyolali',
+            'npsn_sekolah' => '20308455',
         ]);
+
+        $this->assertDatabaseHas('orang_tua_siswa', [
+            'registration_id' => $reg->id,
+            'nama_ayah' => 'Slamet Riyadi',
+            'nama_ibu' => 'Siti Aminah',
+            'nama_wali' => 'Pakde Haryono',
+        ]);
+    }
+
+    public function test_panitia_dapat_menghapus_data_siswa_satuan_dan_massal(): void
+    {
+        $panitia = User::firstOrCreate(
+            ['email' => 'panitia_del_test@smkknbi.sch.id'],
+            [
+                'name' => 'Panitia Delete Tester',
+                'username' => 'panitia_test_del',
+                'phone' => '081399990003',
+                'password' => Hash::make('password'),
+                'role' => 'panitia',
+                'is_active' => true,
+            ]
+        );
+
+        $major = Major::first();
+        $ay = AcademicYear::where('is_active', true)->first() ?? AcademicYear::first();
+
+        // 1. Single delete test
+        $siswa1 = Siswa::create([
+            'name' => 'Siswa Hapus Satuan Panitia',
+            'username' => 'siswa_del_pan_1',
+            'phone' => '087700001111',
+            'email' => 'siswa_del_pan_1@siswa.smkknbi.sch.id',
+            'password' => Hash::make('12345'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+
+        $reg1 = Registration::create([
+            'registration_number' => 'REG-DEL-PAN-1',
+            'user_id' => $siswa1->id,
+            'academic_year_id' => $ay->id,
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ]);
+
+        $resSingle = $this->actingAs($panitia)->post(route('panitia.spmb.student.delete', $reg1->id));
+        $resSingle->assertSessionHas('success');
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $reg1->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswa1->id]);
+
+        // 2. Bulk delete test
+        $siswa2 = Siswa::create([
+            'name' => 'Siswa Hapus Massal Panitia A',
+            'username' => 'siswa_del_pan_2',
+            'phone' => '087700002222',
+            'email' => 'siswa_del_pan_2@siswa.smkknbi.sch.id',
+            'password' => Hash::make('12345'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+        $reg2 = Registration::create([
+            'registration_number' => 'REG-DEL-PAN-2',
+            'user_id' => $siswa2->id,
+            'academic_year_id' => $ay->id,
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ]);
+
+        $siswa3 = Siswa::create([
+            'name' => 'Siswa Hapus Massal Panitia B',
+            'username' => 'siswa_del_pan_3',
+            'phone' => '087700003333',
+            'email' => 'siswa_del_pan_3@siswa.smkknbi.sch.id',
+            'password' => Hash::make('12345'),
+            'role' => 'murid',
+            'is_active' => true,
+        ]);
+        $reg3 = Registration::create([
+            'registration_number' => 'REG-DEL-PAN-3',
+            'user_id' => $siswa3->id,
+            'academic_year_id' => $ay->id,
+            'major_id' => $major->id,
+            'status' => 'pending',
+        ]);
+
+        $resBulk = $this->actingAs($panitia)->post(route('panitia.spmb.student.bulkDelete'), [
+            'registration_ids' => [$reg2->id, $reg3->id],
+        ]);
+        $resBulk->assertSessionHas('success');
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $reg2->id]);
+        $this->assertDatabaseMissing('pendaftaran', ['id' => $reg3->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswa2->id]);
+        $this->assertDatabaseMissing('siswa', ['id' => $siswa3->id]);
     }
 }

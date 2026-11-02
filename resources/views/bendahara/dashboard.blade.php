@@ -112,6 +112,14 @@
                 <span class="px-1.5 py-0.5 rounded text-[10px] bg-white/20 font-mono">{{ $allExpenses->count() }}</span>
             </a>
 
+            <!-- MENU 3: DATA CALON SISWA -->
+            <a href="{{ route('bendahara.dashboard', ['view' => 'calon_siswa']) }}" 
+               class="flex items-center gap-3 px-3.5 py-3 rounded-lg transition {{ $currentView === 'calon_siswa' ? 'bg-[#00a65a] text-white shadow-md font-bold' : 'hover:bg-[#1e282c] hover:text-white' }}">
+                <i class="fa-solid fa-users text-sm w-4 text-center"></i>
+                <span class="flex-1">Data Calon Siswa</span>
+                <span class="px-1.5 py-0.5 rounded text-[10px] bg-white/20 font-mono">{{ count($candidatesForPayment ?? []) }}</span>
+            </a>
+
             <!-- TOMBOL CEPAT INPUT PEMBAYARAN -->
             <div class="pt-4 px-1">
                 <button type="button" onclick="openInputPaymentModal()" 
@@ -285,7 +293,7 @@
             </div>
 
             <!-- TABS SUB-MENU KEUANGAN -->
-            <div class="flex items-center gap-2 border-b border-slate-200 pb-2">
+            <div class="flex items-center flex-wrap gap-2 border-b border-slate-200 pb-2">
                 <a href="{{ route('bendahara.dashboard', ['view' => 'administrasi']) }}" 
                    class="px-4 py-2 rounded-lg font-bold text-xs transition flex items-center gap-2 {{ in_array($currentView, ['administrasi', 'dashboard']) ? 'bg-emerald-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200' }}">
                     <i class="fa-solid fa-table-list"></i>
@@ -297,6 +305,12 @@
                     <i class="fa-solid fa-money-bill-transfer"></i>
                     <span>Pengeluaran Kas SPMB</span>
                     <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 font-mono">{{ $allExpenses->count() }}</span>
+                </a>
+                <a href="{{ route('bendahara.dashboard', ['view' => 'calon_siswa']) }}" 
+                   class="px-4 py-2 rounded-lg font-bold text-xs transition flex items-center gap-2 {{ $currentView === 'calon_siswa' ? 'bg-emerald-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200' }}">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Data Calon Siswa</span>
+                    <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 font-mono">{{ count($candidatesForPayment ?? []) }}</span>
                 </a>
             </div>
 
@@ -486,6 +500,14 @@
                                                    title="Cetak Kwitansi Rekapitulasi Global Resmi">
                                                     <i class="fa-solid fa-file-invoice"></i> Rekap
                                                 </a>
+
+                                                <!-- HAPUS DATA CALON SISWA -->
+                                                <button type="button" 
+                                                        onclick="confirmDeleteStudent('{{ $item->registration_id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg?->registration_number ?? '' }}')"
+                                                        class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                        title="Hapus Data Calon Siswa Ini">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -606,8 +628,116 @@
 
             @endif
 
+            <!-- ================= VIEW 3: DATA CALON SISWA (HAPUS SATUAN & MASSAL) ================= -->
+            @if($currentView === 'calon_siswa')
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h3 class="text-base font-extrabold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-users text-emerald-600"></i>
+                                <span>Data Seluruh Calon Siswa Terdaftar</span>
+                            </h3>
+                            <p class="text-xs text-slate-500 mt-0.5">Kelola daftar calon siswa terdaftar serta hapus data siswa satuan maupun massal.</p>
+                        </div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <button type="button" id="btn-bulk-delete-student" onclick="submitBulkDeleteStudents()" 
+                                    class="hidden px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>Hapus Terpilih (<span id="bulk-student-count">0</span>)</span>
+                            </button>
+                            <div class="relative w-full sm:w-64">
+                                <input type="text" id="search-bendahara-student" onkeyup="filterBendaharaStudentTable()" 
+                                       placeholder="Cari no. daftar, nama, sekolah..." 
+                                       class="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:border-teal-500">
+                                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="form-bulk-delete-student" action="{{ route('bendahara.spmb.student.bulkDelete') }}" method="POST">
+                        @csrf
+                        <div class="overflow-x-auto">
+                            <table id="table-bendahara-students" class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200 text-[11px]">
+                                        <th class="py-3 px-3 text-center w-10">
+                                            <input type="checkbox" id="check-all-students" onclick="toggleSelectAllStudents(this)" class="w-4 h-4 rounded text-teal-600">
+                                        </th>
+                                        <th class="py-3 px-3 text-center w-12">No</th>
+                                        <th class="py-3 px-3">No. Pendaftar</th>
+                                        <th class="py-3 px-3">Nama Calon Siswa</th>
+                                        <th class="py-3 px-3 text-center">L/P</th>
+                                        <th class="py-3 px-3">Asal Sekolah</th>
+                                        <th class="py-3 px-3">Jurusan Pilihan</th>
+                                        <th class="py-3 px-3 text-center">Status</th>
+                                        <th class="py-3 px-3 text-center w-24">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 font-medium">
+                                    @forelse($allCalonSiswa ?? [] as $sIdx => $r)
+                                        @php
+                                            $u = $r->user;
+                                            $bio = $r->biodata;
+                                            $sName = $bio->nama_lengkap ?? $u->name ?? 'Calon Siswa';
+                                        @endphp
+                                        <tr class="hover:bg-slate-50/80 transition bendahara-student-row">
+                                            <td class="py-3 px-3 text-center">
+                                                <input type="checkbox" name="ids[]" value="{{ $r->id }}" onchange="updateBulkStudentCount()" class="student-item-cb w-4 h-4 rounded text-teal-600">
+                                            </td>
+                                            <td class="py-3 px-3 text-center text-slate-500">{{ $sIdx + 1 }}</td>
+                                            <td class="py-3 px-3 font-mono font-bold text-emerald-700">{{ $r->registration_number }}</td>
+                                            <td class="py-3 px-3 font-bold text-slate-800">
+                                                <div class="uppercase">{{ $sName }}</div>
+                                                <div class="text-[11px] text-slate-400 font-normal font-mono">{{ $u->phone ?? $bio->no_hp ?? '-' }}</div>
+                                            </td>
+                                            <td class="py-3 px-3 text-center">
+                                                <span class="px-2 py-0.5 border border-slate-300 rounded text-[11px] font-bold text-slate-600 bg-slate-50">
+                                                    {{ $bio->jenis_kelamin ?? 'L' }}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-3 text-slate-600 uppercase text-[11px] font-semibold">{{ $r->school->asal_sekolah ?? '-' }}</td>
+                                            <td class="py-3 px-3 font-bold text-slate-800">
+                                                {{ $r->major->name ?? '-' }}
+                                                @if(!empty($r->major->industry_class))
+                                                    <div class="text-[10px] text-indigo-600 font-semibold">({{ $r->major->industry_class }})</div>
+                                                @endif
+                                            </td>
+                                            <td class="py-3 px-3 text-center">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $r->status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : ($r->status === 'verified' ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800') }}">
+                                                    {{ strtoupper($r->status) }}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-3 text-center">
+                                                <button type="button" 
+                                                        onclick="confirmDeleteStudent('{{ $r->id }}', '{{ addslashes($sName) }}', '{{ $r->registration_number }}')"
+                                                        class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                        title="Hapus Data Calon Siswa Ini">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="py-12 text-center text-slate-400">
+                                                <i class="fa-solid fa-users text-4xl mb-3 text-slate-300"></i>
+                                                <p class="font-bold text-slate-600">Tidak ada data calon siswa terdaftar.</p>
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+            @endif
+
         </main>
     </div>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN OLEH BENDAHARA -->
+    <form id="form-delete-single-student" action="" method="POST" class="hidden">
+        @csrf
+    </form>
 
     <!-- ================= MODAL INPUT PEMBAYARAN TUNAI (BENDAHARA) ================= -->
     <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
@@ -1011,6 +1141,55 @@
 
         function closeChangeMajorModal() {
             document.getElementById('modal-change-major').classList.add('hidden');
+        }
+
+        // ================= HAPUS DATA CALON SISWA (SATUAN & MASSAL) OLEH BENDAHARA =================
+        function confirmDeleteStudent(id, name, regNum) {
+            if (confirm(`Apakah Anda yakin ingin menghapus data calon siswa '${name}' (${regNum})? Seluruh data pendaftaran, biodata, dan riwayat pembayaran siswa ini akan dihapus.`)) {
+                const form = document.getElementById('form-delete-single-student');
+                form.action = `/bendahara/spmb/calon-siswa/${id}/delete`;
+                form.submit();
+            }
+        }
+
+        function toggleSelectAllStudents(source) {
+            const cbs = document.querySelectorAll('.student-item-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateBulkStudentCount();
+        }
+
+        function updateBulkStudentCount() {
+            const count = document.querySelectorAll('.student-item-cb:checked').length;
+            const btn = document.getElementById('btn-bulk-delete-student');
+            const countLabel = document.getElementById('bulk-student-count');
+            if (btn && countLabel) {
+                countLabel.innerText = count;
+                if (count > 0) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        }
+
+        function submitBulkDeleteStudents() {
+            const checked = document.querySelectorAll('.student-item-cb:checked');
+            if (checked.length === 0) {
+                alert('Silakan pilih setidaknya satu data calon siswa untuk dihapus.');
+                return;
+            }
+            if (confirm(`Apakah Anda yakin ingin menghapus ${checked.length} data calon siswa terpilih secara massal?`)) {
+                document.getElementById('form-bulk-delete-student').submit();
+            }
+        }
+
+        function filterBendaharaStudentTable() {
+            const query = (document.getElementById('search-bendahara-student')?.value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('#table-bendahara-students tbody tr.bendahara-student-row');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = (!query || text.includes(query)) ? '' : 'none';
+            });
         }
 
         // ================= MODAL EXPENSE =================

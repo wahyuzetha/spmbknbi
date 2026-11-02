@@ -24,7 +24,7 @@ class DashboardController extends Controller
         $majors = Major::where('is_active', true)->withCount('registrations')->get();
 
         // 1. Data Pembayaran Administrasi (Dengan Grouping Global Siswa & Multi-Transaksi)
-        $allPayments = Payment::with(['registration.user', 'registration.major', 'confirmedBy'])
+        $allPayments = Payment::with(['registration.user', 'registration.major', 'registration.school', 'confirmedBy'])
             ->latest('payment_date')
             ->latest('id')
             ->get();
@@ -89,6 +89,13 @@ class DashboardController extends Controller
 
         $currentView = $request->get('view', 'administrasi');
 
+        $allCalonSiswa = collect();
+        if ($currentView === 'calon_siswa') {
+            $allCalonSiswa = Registration::with(['user', 'major', 'biodata', 'school'])
+                ->latest()
+                ->get();
+        }
+
         return view('bendahara.dashboard', compact(
             'academicYear',
             'majors',
@@ -104,7 +111,8 @@ class DashboardController extends Controller
             'saldoKas',
             'settings',
             'schoolLogo',
-            'currentView'
+            'currentView',
+            'allCalonSiswa'
         ));
     }
 

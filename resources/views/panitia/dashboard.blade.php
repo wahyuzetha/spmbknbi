@@ -235,6 +235,29 @@
                 </div>
             @endif
 
+            @if(session('error'))
+                <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between shadow-sm">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation text-rose-600 text-base"></i>
+                        <span>{{ session('error') }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-rose-700 hover:text-rose-900">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            @endif
+
+            @if ($errors->any())
+                <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold space-y-1 shadow-sm">
+                    <div class="font-bold">Terjadi Kesalahan:</div>
+                    <ul class="list-disc pl-5">
+                        @foreach ($errors->all() as $err)
+                            <li>{{ $err }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <!-- BANNER HEADER ATAS (PERSIS GAMBAR USER) -->
             <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -465,6 +488,13 @@
                             <p class="text-xs text-slate-500">Periksa berkas, cetak bukti pendaftaran resmi, dan kelola data pendaftar</p>
                         </div>
                         <div class="flex items-center flex-wrap gap-2">
+                            <!-- Tombol Hapus Massal (Muncul Saat Ada yang Dicentang) -->
+                            <button type="button" id="btn-bulk-delete-student" onclick="submitBulkDeleteStudents()" 
+                                    class="hidden px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
+                                <span>Hapus Terpilih (<span id="bulk-student-count">0</span>)</span>
+                            </button>
+
                             <!-- Tombol Export Excel Calon Siswa -->
                             <a href="{{ route('panitia.spmb.exportExcel', request()->all()) }}" 
                                class="px-3.5 py-2 bg-white hover:bg-emerald-50 text-[#00a65a] border border-[#00a65a] rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-2xs"
@@ -506,99 +536,189 @@
                         </button>
                     </form>
 
-                    <!-- TABEL ANTREAN -->
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-xs border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 border-y border-slate-200 font-extrabold uppercase text-[11px] text-slate-600">
-                                    <th class="py-3 px-3">Calon Siswa</th>
-                                    <th class="py-3 px-3">Jurusan</th>
-                                    <th class="py-3 px-3">Berkas Terunggah</th>
-                                    <th class="py-3 px-3">Status</th>
-                                    <th class="py-3 px-3 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-100 font-medium">
-                                @forelse($registrations as $reg)
-                                    <tr class="hover:bg-slate-50 transition">
-                                        <td class="py-3 px-3">
-                                            <div class="font-bold text-slate-900">{{ $reg->user->name ?? '-' }}</div>
-                                            <div class="text-[10px] text-slate-500 font-mono">
-                                                {{ $reg->registration_number }} &bull; NISN: {{ $reg->user->nisn ?? '-' }}
-                                            </div>
-                                        </td>
-                                        <td class="py-3 px-3 font-bold text-slate-700">
-                                            {{ $reg->major->name ?? '-' }}
-                                            @if(!empty($reg->major->industry_class))
-                                                <span class="text-slate-500 font-normal text-[11px]">({{ $reg->major->industry_class }})</span>
-                                            @endif
-                                        </td>
-                                        <td class="py-3 px-3">
-                                            <div class="flex flex-wrap gap-1">
-                                                @php
-                                                    $docMap = ['kartu_keluarga' => 'KK', 'akta_kelahiran' => 'Akta', 'ijazah_skl' => 'Ijazah', 'pas_foto' => 'Foto'];
-                                                    $upMap = $reg->documents->pluck('file_path', 'document_type')->toArray();
-                                                @endphp
-                                                @foreach($docMap as $typeKey => $typeLabel)
-                                                    @if(isset($upMap[$typeKey]))
-                                                        <a href="{{ asset('storage/' . $upMap[$typeKey]) }}" target="_blank" class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:underline">
-                                                            ✓ {{ $typeLabel }}
-                                                        </a>
-                                                    @else
-                                                        <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px]">{{ $typeLabel }}</span>
-                                                    @endif
-                                                @endforeach
-                                            </div>
-                                        </td>
-                                        <td class="py-3 px-3">
-                                            <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $reg->status === 'verified' ? 'bg-indigo-100 text-indigo-800' : ($reg->status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : ($reg->status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')) }}">
-                                                {{ strtoupper($reg->status) }}
-                                            </span>
-                                        </td>
-                                        <td class="py-3 px-3 text-right">
-                                            <div class="flex items-center justify-end gap-1.5">
-                                                @php
-                                                    $rawWa = preg_replace('/[^0-9]/', '', $reg->user->phone ?? '');
-                                                    if(str_starts_with($rawWa, '0')) {
-                                                        $rawWa = '62' . substr($rawWa, 1);
-                                                    }
-                                                    $waText = \App\Models\SystemSetting::formatWaMessage($reg, $settings['wa_message_template'] ?? null);
-                                                @endphp
-                                                @if(!empty($rawWa))
-                                                    <a href="https://wa.me/{{ $rawWa }}?text={{ urlencode($waText) }}" target="_blank" class="w-7 h-7 rounded bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs" title="Chat WhatsApp Calon Siswa">
-                                                        <i class="fa-brands fa-whatsapp text-xs"></i>
-                                                    </a>
-                                                @endif
-
-                                                <!-- Tombol Edit Calon Siswa (Sama seperti Admin Sebelumnya) -->
-                                                <button type="button" 
-                                                        onclick="openEditStudentModal('{{ $reg->id }}', '{{ addslashes($reg->user->name ?? '') }}', '{{ $reg->user->username ?? $reg->user->phone ?? '' }}', '{{ $reg->user->phone ?? '' }}', '{{ $reg->biodata->jenis_kelamin ?? 'L' }}', '{{ addslashes($reg->school->asal_sekolah ?? '') }}', '{{ $reg->major_id }}')"
-                                                        class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
-                                                        title="Edit Data Calon Siswa">
-                                                    <i class="fa-solid fa-pen text-[11px]"></i>
-                                                </button>
-
-                                                <!-- Tombol Cetak Bukti Pendaftaran Calon Siswa -->
-                                                <a href="{{ route('panitia.spmb.printCard', $reg->id) }}" target="_blank"
-                                                   class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
-                                                   title="Cetak Bukti Pendaftaran Calon Siswa (F4)">
-                                                    <i class="fa-solid fa-print text-[11px]"></i>
-                                                </a>
-
-                                                <!-- Tombol Verifikasi Berkas -->
-                                                <button type="button" onclick="openPanitiaVerifyModal('{{ $reg->id }}', '{{ $reg->registration_number }}', '{{ addslashes($reg->user->name ?? '') }}', '{{ $reg->status }}', '{{ addslashes($reg->verification_notes ?? '') }}')"
-                                                        class="px-3 py-1.5 rounded bg-[#00a65a] hover:bg-[#008f4c] text-white text-[11px] font-bold cursor-pointer">
-                                                    Verifikasi
-                                                </button>
-                                            </div>
-                                        </td>
+                    <!-- FORM BULK DELETE & TABEL ANTREAN -->
+                    <form id="form-bulk-delete-student" action="{{ route('panitia.spmb.student.bulkDelete') }}" method="POST">
+                        @csrf
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-y border-slate-200 font-extrabold uppercase text-[11px] text-slate-600">
+                                        <th class="py-3 px-3 w-8 text-center">
+                                            <input type="checkbox" id="check-all-students" onclick="toggleSelectAllStudents(this)" class="w-4 h-4 rounded text-teal-600">
+                                        </th>
+                                        <th class="py-3 px-3">Calon Siswa</th>
+                                        <th class="py-3 px-3">Jurusan</th>
+                                        <th class="py-3 px-3">Berkas Terunggah</th>
+                                        <th class="py-3 px-3">Status</th>
+                                        <th class="py-3 px-3 text-right">Aksi</th>
                                     </tr>
-                                @empty
-                                    <tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada data verifikasi.</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 font-medium">
+                                    @forelse($registrations as $reg)
+                                        @php
+                                            $u = $reg->user;
+                                            $bio = $reg->biodata;
+                                            $school = $reg->school;
+                                            $parentModel = $reg->parent ?? $reg->parents;
+                                            $phone = $u->phone ?? $bio->no_hp ?? '';
+                                            $studentName = $bio->nama_lengkap ?? $u->name ?? '-';
+                                            $studentPayload = [
+                                                'id' => $reg->id,
+                                                'reg_number' => $reg->registration_number,
+                                                'name' => $studentName,
+                                                'phone' => $phone,
+                                                'username' => $u->username ?? $u->phone ?? '',
+                                                'email' => $u->email ?? $bio->email ?? '',
+                                                'nisn' => $u->nisn ?? '',
+                                                'gender' => $bio->jenis_kelamin ?? 'L',
+                                                'major_id' => $reg->major_id,
+                                                'major_choice_2_id' => $reg->major_choice_2_id ?? '',
+                                                'registration_type' => $reg->registration_type ?? 'reguler',
+                                                'recommendation_by' => $reg->recommendation_by ?? '',
+                                                'status' => $reg->status,
+
+                                                'nik' => $bio->nik ?? '',
+                                                'no_kk' => $bio->no_kk ?? '',
+                                                'tempat_lahir' => $bio->tempat_lahir ?? '',
+                                                'tanggal_lahir' => $bio?->tanggal_lahir ? (\Carbon\Carbon::parse($bio->tanggal_lahir)->format('Y-m-d')) : '',
+                                                'agama' => $bio->agama ?? 'Islam',
+                                                'anak_ke' => $bio->anak_ke ?? '',
+                                                'jumlah_saudara' => $bio->jumlah_saudara ?? '',
+                                                'tinggi_badan' => $bio->tinggi_badan ?? '',
+                                                'berat_badan' => $bio->berat_badan ?? '',
+                                                'riwayat_penyakit' => $bio->riwayat_penyakit ?? '',
+
+                                                'alamat_jalan' => $bio->alamat_jalan ?? '',
+                                                'desa' => $bio->desa ?? '',
+                                                'kecamatan' => $bio->kecamatan ?? '',
+                                                'kabupaten' => $bio->kabupaten ?? '',
+                                                'provinsi' => $bio->provinsi ?? '',
+                                                'kode_pos' => $bio->kode_pos ?? '',
+
+                                                'asal_sekolah' => $school->asal_sekolah ?? '',
+                                                'npsn_sekolah' => $school->npsn_sekolah ?? '',
+                                                'jenis_sekolah' => $school->jenis_sekolah ?? 'SMP',
+                                                'status_sekolah' => $school->status_sekolah ?? 'Negeri',
+                                                'kabupaten_sekolah' => $school->kabupaten_sekolah ?? '',
+                                                'tahun_lulus' => $school->tahun_lulus ?? date('Y'),
+                                                'no_ijazah' => $school->no_ijazah ?? '',
+                                                'nilai_rata_raport' => $school->nilai_rata_raport ?? '',
+
+                                                'nama_ayah' => $parentModel->nama_ayah ?? '',
+                                                'status_ayah' => $parentModel->status_ayah ?? 'Masih Hidup',
+                                                'nik_ayah' => $parentModel->nik_ayah ?? '',
+                                                'pekerjaan_ayah' => $parentModel->pekerjaan_ayah ?? '',
+                                                'pendidikan_ayah' => $parentModel->pendidikan_ayah ?? '',
+                                                'penghasilan_ayah' => $parentModel->penghasilan_ayah ?? '',
+                                                'no_hp_ayah' => $parentModel->no_hp_ayah ?? '',
+
+                                                'nama_ibu' => $parentModel->nama_ibu ?? '',
+                                                'status_ibu' => $parentModel->status_ibu ?? 'Masih Hidup',
+                                                'nik_ibu' => $parentModel->nik_ibu ?? '',
+                                                'pekerjaan_ibu' => $parentModel->pekerjaan_ibu ?? '',
+                                                'pendidikan_ibu' => $parentModel->pendidikan_ibu ?? '',
+                                                'penghasilan_ibu' => $parentModel->penghasilan_ibu ?? '',
+                                                'no_hp_ibu' => $parentModel->no_hp_ibu ?? '',
+
+                                                'nama_wali' => $parentModel->nama_wali ?? '',
+                                                'hubungan_wali' => $parentModel->hubungan_wali ?? '',
+                                                'pekerjaan_wali' => $parentModel->pekerjaan_wali ?? '',
+                                                'no_hp_wali' => $parentModel->no_hp_wali ?? '',
+                                                'alamat_wali' => $parentModel->alamat_wali ?? '',
+                                            ];
+                                        @endphp
+                                        <tr class="hover:bg-slate-50 transition">
+                                            <td class="py-3 px-3 text-center">
+                                                <input type="checkbox" name="ids[]" value="{{ $reg->id }}" onchange="updateBulkStudentCount()" class="student-item-cb w-4 h-4 rounded text-teal-600">
+                                            </td>
+                                            <td class="py-3 px-3">
+                                                <div class="font-bold text-slate-900">{{ $studentName }}</div>
+                                                <div class="text-[10px] text-slate-500 font-mono">
+                                                    {{ $reg->registration_number }} &bull; NISN: {{ $u->nisn ?? '-' }}
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-3 font-bold text-slate-700">
+                                                {{ $reg->major->name ?? '-' }}
+                                                @if(!empty($reg->major->industry_class))
+                                                    <span class="text-slate-500 font-normal text-[11px]">({{ $reg->major->industry_class }})</span>
+                                                @endif
+                                            </td>
+                                            <td class="py-3 px-3">
+                                                <div class="flex flex-wrap gap-1">
+                                                    @php
+                                                        $docMap = ['kartu_keluarga' => 'KK', 'akta_kelahiran' => 'Akta', 'ijazah_skl' => 'Ijazah', 'pas_foto' => 'Foto'];
+                                                        $upMap = $reg->documents->pluck('file_path', 'document_type')->toArray();
+                                                    @endphp
+                                                    @foreach($docMap as $typeKey => $typeLabel)
+                                                        @if(isset($upMap[$typeKey]))
+                                                            <a href="{{ asset('storage/' . $upMap[$typeKey]) }}" target="_blank" class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold hover:underline">
+                                                                ✓ {{ $typeLabel }}
+                                                            </a>
+                                                        @else
+                                                            <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-400 text-[10px]">{{ $typeLabel }}</span>
+                                                        @endif
+                                                    @endforeach
+                                                </div>
+                                            </td>
+                                            <td class="py-3 px-3">
+                                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $reg->status === 'verified' ? 'bg-indigo-100 text-indigo-800' : ($reg->status === 'accepted' ? 'bg-emerald-100 text-emerald-800' : ($reg->status === 'rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800')) }}">
+                                                    {{ strtoupper($reg->status) }}
+                                                </span>
+                                            </td>
+                                            <td class="py-3 px-3 text-right">
+                                                <div class="flex items-center justify-end gap-1.5">
+                                                    @php
+                                                        $rawWa = preg_replace('/[^0-9]/', '', $phone);
+                                                        if(str_starts_with($rawWa, '0')) {
+                                                            $rawWa = '62' . substr($rawWa, 1);
+                                                        }
+                                                        $waText = \App\Models\SystemSetting::formatWaMessage($reg, $settings['wa_message_template'] ?? null);
+                                                    @endphp
+                                                    @if(!empty($rawWa))
+                                                        <a href="https://wa.me/{{ $rawWa }}?text={{ urlencode($waText) }}" target="_blank" class="w-7 h-7 rounded bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs" title="Chat WhatsApp Calon Siswa">
+                                                            <i class="fa-brands fa-whatsapp text-xs"></i>
+                                                        </a>
+                                                    @endif
+
+                                                    <!-- Tombol Edit Calon Siswa (Full Edit Sama dengan Admin) -->
+                                                    <button type="button" 
+                                                            data-student='@json($studentPayload)'
+                                                            onclick="openEditStudentModalFull(this)"
+                                                            class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Edit Data Lengkap Calon Siswa (Full Biodata)">
+                                                        <i class="fa-solid fa-pen text-[11px]"></i>
+                                                    </button>
+
+                                                    <!-- Tombol Cetak Bukti Pendaftaran Calon Siswa -->
+                                                    <a href="{{ route('panitia.spmb.printCard', $reg->id) }}" target="_blank"
+                                                       class="w-7 h-7 rounded bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                       title="Cetak Bukti Pendaftaran Calon Siswa (F4)">
+                                                        <i class="fa-solid fa-print text-[11px]"></i>
+                                                    </a>
+
+                                                    <!-- Tombol Hapus Data Calon Siswa -->
+                                                    <button type="button" 
+                                                            onclick="confirmDeleteStudent('{{ $reg->id }}', '{{ addslashes($studentName) }}', '{{ $reg->registration_number }}')"
+                                                            class="w-7 h-7 rounded bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                            title="Hapus Data Calon Siswa">
+                                                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                                    </button>
+
+                                                    <!-- Tombol Verifikasi Berkas -->
+                                                    <button type="button" onclick="openPanitiaVerifyModal('{{ $reg->id }}', '{{ $reg->registration_number }}', '{{ addslashes($studentName) }}', '{{ $reg->status }}', '{{ addslashes($reg->verification_notes ?? '') }}')"
+                                                            class="px-3 py-1.5 rounded bg-[#00a65a] hover:bg-[#008f4c] text-white text-[11px] font-bold cursor-pointer">
+                                                        Verifikasi
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr><td colspan="6" class="py-6 text-center text-slate-400">Tidak ada data verifikasi.</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
                     <div>{{ $registrations->links() }}</div>
                 </div>
             @endif
@@ -695,12 +815,20 @@
                                         </td>
                                         <td class="py-3 px-3 text-center">
                                             @if($pReg)
-                                                <button type="button" 
-                                                        onclick="openPanitiaChangeMajorModal('{{ $pReg->id }}', '{{ addslashes($pUser->name ?? '') }}', '{{ $pReg->registration_number }}', '{{ $pReg->major_id }}', '{{ addslashes($pMajor->name ?? '') }}')"
-                                                        class="p-1.5 w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-bold text-xs inline-flex items-center justify-center transition cursor-pointer"
-                                                        title="Ubah Jurusan Calon Siswa Ini">
-                                                    <i class="fa-solid fa-graduation-cap"></i>
-                                                </button>
+                                                <div class="flex items-center justify-center gap-1.5">
+                                                    <button type="button" 
+                                                            onclick="openPanitiaChangeMajorModal('{{ $pReg->id }}', '{{ addslashes($pUser->name ?? '') }}', '{{ $pReg->registration_number }}', '{{ $pReg->major_id }}', '{{ addslashes($pMajor->name ?? '') }}')"
+                                                            class="p-1.5 w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-bold text-xs inline-flex items-center justify-center transition cursor-pointer"
+                                                            title="Ubah Jurusan Calon Siswa Ini">
+                                                        <i class="fa-solid fa-graduation-cap"></i>
+                                                    </button>
+                                                    <button type="button" 
+                                                            onclick="confirmDeleteStudent('{{ $pReg->id }}', '{{ addslashes($pUser->name ?? 'Calon Siswa') }}', '{{ $pReg->registration_number ?? '' }}')"
+                                                            class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition cursor-pointer"
+                                                            title="Hapus Data Calon Siswa Ini">
+                                                        <i class="fa-solid fa-trash-can"></i>
+                                                    </button>
+                                                </div>
                                             @else
                                                 <span class="text-slate-400">-</span>
                                             @endif
@@ -832,24 +960,169 @@
             if (modal) modal.classList.add('hidden');
         }
 
-        // ================= JAVASCRIPT FITUR EDIT DATA CALON SISWA PANITIA =================
-        function openEditStudentModal(id, name, username, phone, gender, school, majorId, status) {
-            document.getElementById('form-edit-student-action').action = `/panitia/spmb/calon-siswa/${id}/update`;
-            document.getElementById('edit-student-name').value = name;
-            document.getElementById('edit-student-username').value = username;
-            document.getElementById('edit-student-phone').value = phone;
-            document.getElementById('edit-student-password').value = '';
-            document.getElementById('edit-student-gender').value = gender;
-            document.getElementById('edit-student-school').value = school;
-            document.getElementById('edit-student-major').value = majorId;
-            if (document.getElementById('edit-student-status') && status) {
-                document.getElementById('edit-student-status').value = status;
+        // ================= JAVASCRIPT FITUR EDIT & HAPUS DATA CALON SISWA PANITIA (FULL ACCESS SAMA DENGAN ADMIN) =================
+        function switchEditTab(tabName) {
+            document.querySelectorAll('.edit-tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.edit-tab-btn').forEach(btn => {
+                btn.classList.remove('border-emerald-600', 'text-emerald-700');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+
+            const content = document.getElementById(`tab-content-${tabName}`);
+            const btn = document.getElementById(`tab-btn-${tabName}`);
+            if (content) content.classList.remove('hidden');
+            if (btn) {
+                btn.classList.remove('border-transparent', 'text-slate-500');
+                btn.classList.add('border-emerald-600', 'text-emerald-700');
             }
+        }
+
+        function openEditStudentModalFull(element) {
+            let data = {};
+            if (typeof element === 'string') {
+                try { data = JSON.parse(element); } catch(e) {}
+            } else if (element && element.getAttribute) {
+                try { data = JSON.parse(element.getAttribute('data-student') || '{}'); } catch(e) {}
+            } else if (typeof element === 'object') {
+                data = element;
+            }
+
+            const form = document.getElementById('form-edit-student-action');
+            if (form && data.id) {
+                form.action = `/panitia/spmb/calon-siswa/${data.id}/update`;
+            }
+
+            const badgeReg = document.getElementById('edit-student-badge-reg');
+            if (badgeReg) badgeReg.innerText = data.reg_number ? `No. Reg: ${data.reg_number}` : '';
+
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = (val !== null && val !== undefined) ? val : '';
+            };
+
+            // Tab 1: Akun & Pendaftaran
+            setVal('edit-student-name', data.name);
+            setVal('edit-student-nisn', data.nisn);
+            setVal('edit-student-phone', data.phone);
+            setVal('edit-student-email', data.email);
+            setVal('edit-student-username', data.username);
+            setVal('edit-student-password', '');
+            setVal('edit-student-major', data.major_id);
+            setVal('edit-student-major-2', data.major_choice_2_id || '');
+            setVal('edit-student-reg-type', data.registration_type || 'reguler');
+            setVal('edit-student-recommendation', data.recommendation_by);
+            setVal('edit-student-status', data.status || 'pending');
+
+            // Tab 2: Biodata Diri & Alamat
+            setVal('edit-student-nik', data.nik);
+            setVal('edit-student-no-kk', data.no_kk);
+            setVal('edit-student-gender', data.gender || 'L');
+            setVal('edit-student-pob', data.tempat_lahir);
+            setVal('edit-student-dob', data.tanggal_lahir);
+            setVal('edit-student-religion', data.agama || 'Islam');
+            setVal('edit-student-child-no', data.anak_ke);
+            setVal('edit-student-siblings-count', data.jumlah_saudara);
+            setVal('edit-student-height', data.tinggi_badan);
+            setVal('edit-student-weight', data.berat_badan);
+            setVal('edit-student-disease', data.riwayat_penyakit);
+            setVal('edit-student-address-street', data.alamat_jalan);
+            setVal('edit-student-village', data.desa);
+            setVal('edit-student-district', data.kecamatan);
+            setVal('edit-student-city', data.kabupaten);
+            setVal('edit-student-province', data.provinsi);
+            setVal('edit-student-postal-code', data.kode_pos);
+
+            // Tab 3: Asal Sekolah
+            setVal('edit-student-school', data.asal_sekolah);
+            setVal('edit-student-school-npsn', data.npsn_sekolah);
+            setVal('edit-student-school-type', data.jenis_sekolah || 'SMP');
+            setVal('edit-student-school-status', data.status_sekolah || 'Negeri');
+            setVal('edit-student-school-city', data.kabupaten_sekolah);
+            setVal('edit-student-graduation-year', data.tahun_lulus);
+            setVal('edit-student-ijazah-no', data.no_ijazah);
+            setVal('edit-student-report-score', data.nilai_rata_raport);
+
+            // Tab 4: Orang Tua & Wali
+            setVal('edit-student-father-name', data.nama_ayah);
+            setVal('edit-student-father-status', data.status_ayah || 'Masih Hidup');
+            setVal('edit-student-father-nik', data.nik_ayah);
+            setVal('edit-student-father-job', data.pekerjaan_ayah);
+            setVal('edit-student-father-edu', data.pendidikan_ayah);
+            setVal('edit-student-father-income', data.penghasilan_ayah);
+            setVal('edit-student-father-phone', data.no_hp_ayah);
+
+            setVal('edit-student-mother-name', data.nama_ibu);
+            setVal('edit-student-mother-status', data.status_ibu || 'Masih Hidup');
+            setVal('edit-student-mother-nik', data.nik_ibu);
+            setVal('edit-student-mother-job', data.pekerjaan_ibu);
+            setVal('edit-student-mother-edu', data.pendidikan_ibu);
+            setVal('edit-student-mother-income', data.penghasilan_ibu);
+            setVal('edit-student-mother-phone', data.no_hp_ibu);
+
+            setVal('edit-student-guardian-name', data.nama_wali);
+            setVal('edit-student-guardian-relation', data.hubungan_wali);
+            setVal('edit-student-guardian-job', data.pekerjaan_wali);
+            setVal('edit-student-guardian-phone', data.no_hp_wali);
+            setVal('edit-student-guardian-address', data.alamat_wali);
+
+            switchEditTab('akun');
             document.getElementById('modal-edit-student').classList.remove('hidden');
+        }
+
+        function openEditStudentModal(id, name, username, phone, gender, school, majorId, status) {
+            openEditStudentModalFull({
+                id: id,
+                name: name,
+                username: username,
+                phone: phone,
+                gender: gender,
+                asal_sekolah: school,
+                major_id: majorId,
+                status: status || 'pending',
+            });
         }
 
         function closeEditStudentModal() {
             document.getElementById('modal-edit-student').classList.add('hidden');
+        }
+
+        function confirmDeleteStudent(id, name, regNum) {
+            if (confirm(`Apakah Anda yakin ingin menghapus data calon siswa '${name}' (${regNum})? Seluruh data pendaftaran dan biodata akan dihapus.`)) {
+                const form = document.getElementById('form-delete-single-student');
+                form.action = `/panitia/spmb/calon-siswa/${id}/delete`;
+                form.submit();
+            }
+        }
+
+        function toggleSelectAllStudents(source) {
+            const cbs = document.querySelectorAll('.student-item-cb');
+            cbs.forEach(cb => cb.checked = source.checked);
+            updateBulkStudentCount();
+        }
+
+        function updateBulkStudentCount() {
+            const count = document.querySelectorAll('.student-item-cb:checked').length;
+            const btn = document.getElementById('btn-bulk-delete-student');
+            const countLabel = document.getElementById('bulk-student-count');
+            if (btn && countLabel) {
+                countLabel.innerText = count;
+                if (count > 0) {
+                    btn.classList.remove('hidden');
+                } else {
+                    btn.classList.add('hidden');
+                }
+            }
+        }
+
+        function submitBulkDeleteStudents() {
+            const checked = document.querySelectorAll('.student-item-cb:checked');
+            if (checked.length === 0) {
+                alert('Silakan pilih setidaknya satu data siswa untuk dihapus.');
+                return;
+            }
+            if (confirm(`Apakah Anda yakin ingin menghapus ${checked.length} data calon siswa terpilih secara massal?`)) {
+                document.getElementById('form-bulk-delete-student').submit();
+            }
         }
     </script>
 
@@ -917,75 +1190,440 @@
         </div>
     </div>
 
-    <!-- ================= MODAL EDIT CALON SISWA OLEH PANITIA ================= -->
-    <div id="modal-edit-student" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh]">
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN -->
+    <form id="form-delete-single-student" action="" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <!-- ================= MODAL EDIT CALON SISWA OLEH PANITIA (FULL ACCESS SAMA DENGAN ADMIN) ================= -->
+    <div id="modal-edit-student" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[92vh]">
+            
+            <!-- Header Modal -->
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div class="flex items-center gap-2 text-slate-900 font-bold text-base">
-                    <i class="fa-solid fa-pen-to-square text-[#00a65a]"></i>
-                    <h3>Edit Data Calon Siswa</h3>
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-base">
+                        <i class="fa-solid fa-user-pen"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-extrabold text-slate-900">Edit Data Lengkap Calon Siswa</h3>
+                            <span id="edit-student-badge-reg" class="font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-200"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500">Akses Penuh Panitia SPMB: Ubah data akun, biodata, asal sekolah, dan orang tua/wali siswa.</p>
+                    </div>
                 </div>
-                <button type="button" onclick="closeEditStudentModal()" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition">
+                <button type="button" onclick="closeEditStudentModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
                     <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Tab Navigasi Kategori Edit -->
+            <div class="flex border-b border-slate-200 gap-1 overflow-x-auto text-xs font-bold select-none">
+                <button type="button" id="tab-btn-akun" onclick="switchEditTab('akun')" 
+                        class="edit-tab-btn px-4 py-2.5 border-b-2 border-emerald-600 text-emerald-700 flex items-center gap-2 transition whitespace-nowrap">
+                    <i class="fa-solid fa-user-gear"></i> 1. Akun & Pilihan
+                </button>
+                <button type="button" id="tab-btn-biodata" onclick="switchEditTab('biodata')" 
+                        class="edit-tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 transition whitespace-nowrap">
+                    <i class="fa-solid fa-id-card"></i> 2. Biodata & Alamat
+                </button>
+                <button type="button" id="tab-btn-sekolah" onclick="switchEditTab('sekolah')" 
+                        class="edit-tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 transition whitespace-nowrap">
+                    <i class="fa-solid fa-school"></i> 3. Asal Sekolah
+                </button>
+                <button type="button" id="tab-btn-ortu" onclick="switchEditTab('ortu')" 
+                        class="edit-tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 flex items-center gap-2 transition whitespace-nowrap">
+                    <i class="fa-solid fa-people-roof"></i> 4. Orang Tua & Wali
                 </button>
             </div>
 
             <form id="form-edit-student-action" action="" method="POST" class="space-y-4 text-xs font-medium text-slate-700">
                 @csrf
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div class="space-y-1 sm:col-span-2">
-                        <label class="font-bold text-slate-800">Nama Lengkap Siswa *</label>
-                        <input type="text" id="edit-student-name" name="nama_siswa" required 
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="font-bold text-slate-800">No. HP / WhatsApp Siswa *</label>
-                        <input type="text" id="edit-student-phone" name="phone" required 
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="font-bold text-slate-800">Username Akun</label>
-                        <input type="text" id="edit-student-username" name="username" 
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="font-bold text-slate-800">Password Baru (Opsional)</label>
-                        <input type="text" id="edit-student-password" name="password" placeholder="Kosongkan jika tak diubah" 
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
-                    </div>
-                    <div class="space-y-1">
-                        <label class="font-bold text-slate-800">Jenis Kelamin *</label>
-                        <select id="edit-student-gender" name="gender" required 
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-bold">
-                            <option value="L">Laki-laki (L)</option>
-                            <option value="P">Perempuan (P)</option>
-                        </select>
-                    </div>
-                    <div class="space-y-1 sm:col-span-2">
-                        <label class="font-bold text-slate-800">Asal Sekolah (SMP/MTs) *</label>
-                        <input type="text" id="edit-student-school" name="asal_sekolah" required 
-                               class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg uppercase focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
-                    </div>
-                    <div class="space-y-1 sm:col-span-2">
-                        <label class="font-bold text-slate-800">Kompetensi Keahlian (Pilihan Jurusan) *</label>
-                        <select id="edit-student-major" name="major_id" required 
-                                class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
-                            @foreach($majors as $m)
-                                <option value="{{ $m->id }}">{{ $m->name }} {{ !empty($m->industry_class) ? '('.$m->industry_class.')' : '' }}</option>
-                            @endforeach
-                        </select>
+
+                <!-- ================= TAB 1: AKUN & PILIHAN PENDAFTARAN ================= -->
+                <div id="tab-content-akun" class="edit-tab-content space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        <div class="space-y-1 sm:col-span-2">
+                            <label class="font-bold text-slate-800">Nama Lengkap Siswa *</label>
+                            <input type="text" id="edit-student-name" name="nama_siswa" required 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">NISN Siswa</label>
+                            <input type="text" id="edit-student-nisn" name="nisn" maxlength="20" placeholder="10 Digit NISN"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">No. HP / WhatsApp Siswa *</label>
+                            <input type="text" id="edit-student-phone" name="phone" required 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Email Siswa</label>
+                            <input type="email" id="edit-student-email" name="email" placeholder="siswa@gmail.com"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Username Akun</label>
+                            <input type="text" id="edit-student-username" name="username" 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Password Baru (Opsional)</label>
+                            <input type="text" id="edit-student-password" name="password" placeholder="Kosongkan jika tak diubah" 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Status Pendaftaran *</label>
+                            <select id="edit-student-status" name="status" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-bold">
+                                <option value="pending">PENDING (Menunggu Verifikasi)</option>
+                                <option value="verified">TERVERIFIKASI (Berkas Sah)</option>
+                                <option value="accepted">DITERIMA (Lolos Seleksi SPMB)</option>
+                                <option value="rejected">DITOLAK / PERLU PERBAIKAN</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1 sm:col-span-2 lg:col-span-3 border-t border-slate-100 pt-3">
+                            <label class="font-bold text-slate-800 text-[11px] uppercase tracking-wider text-emerald-800">Pilihan Jurusan & Jalur</label>
+                        </div>
+                        <div class="space-y-1 sm:col-span-2">
+                            <label class="font-bold text-slate-800">Kompetensi Keahlian (Pilihan Utama) *</label>
+                            <select id="edit-student-major" name="major_id" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                                @foreach($majors as $m)
+                                    <option value="{{ $m->id }}">{{ $m->name }} {{ !empty($m->industry_class) ? '('.$m->industry_class.')' : '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Pilihan Jurusan Ke-2</label>
+                            <select id="edit-student-major-2" name="major_choice_2_id" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                                <option value="">-- Tidak Memilih Jurusan Ke-2 --</option>
+                                @foreach($majors as $m)
+                                    <option value="{{ $m->id }}">{{ $m->name }} {{ !empty($m->industry_class) ? '('.$m->industry_class.')' : '' }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Jalur Pendaftaran</label>
+                            <select id="edit-student-reg-type" name="registration_type" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                <option value="reguler">Reguler</option>
+                                <option value="prestasi">Prestasi</option>
+                                <option value="afirmasi">Afirmasi (KIP / Kurang Mampu)</option>
+                                <option value="zonasi">Domisili / Zonasi</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1 sm:col-span-2">
+                            <label class="font-bold text-slate-800">Rekomendasi Oleh (Guru / Alumni / Relasi)</label>
+                            <input type="text" id="edit-student-recommendation" name="recommendation_by" placeholder="Contoh: Bpk. Joko (Guru SMPN 1) / Mandiri"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
-                    <button type="button" onclick="closeEditStudentModal()" 
-                            class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-bold text-slate-600 transition cursor-pointer">
-                        Batal
-                    </button>
-                    <button type="submit" 
-                            class="px-5 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-lg font-bold transition flex items-center gap-1.5 shadow cursor-pointer">
-                        <i class="fa-solid fa-save"></i> Perbarui Data
-                    </button>
+                <!-- ================= TAB 2: BIODATA PRIBADI & ALAMAT ================= -->
+                <div id="tab-content-biodata" class="edit-tab-content space-y-4 hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">NIK Siswa (KTP / KK)</label>
+                            <input type="text" id="edit-student-nik" name="nik" maxlength="16" placeholder="16 Digit NIK"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Nomor Kartu Keluarga (KK)</label>
+                            <input type="text" id="edit-student-no-kk" name="no_kk" maxlength="16" placeholder="16 Digit No. KK"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Jenis Kelamin *</label>
+                            <select id="edit-student-gender" name="gender" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-bold">
+                                <option value="L">Laki-laki (L)</option>
+                                <option value="P">Perempuan (P)</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Tempat Lahir</label>
+                            <input type="text" id="edit-student-pob" name="tempat_lahir" placeholder="Kota / Kabupaten Kelahiran"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 uppercase">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Tanggal Lahir</label>
+                            <input type="date" id="edit-student-dob" name="tanggal_lahir" 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Agama</label>
+                            <select id="edit-student-religion" name="agama" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                <option value="Islam">Islam</option>
+                                <option value="Kristen">Kristen</option>
+                                <option value="Katolik">Katolik</option>
+                                <option value="Hindu">Hindu</option>
+                                <option value="Buddha">Buddha</option>
+                                <option value="Konghucu">Konghucu</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Anak Ke-</label>
+                            <input type="number" id="edit-student-child-no" name="anak_ke" min="1" max="25" placeholder="1"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Jumlah Saudara</label>
+                            <input type="number" id="edit-student-siblings-count" name="jumlah_saudara" min="0" max="25" placeholder="2"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Tinggi & Berat Badan</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="number" id="edit-student-height" name="tinggi_badan" placeholder="TB (cm)" class="w-full px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                                <input type="number" id="edit-student-weight" name="berat_badan" placeholder="BB (kg)" class="w-full px-2.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs">
+                            </div>
+                        </div>
+                        <div class="space-y-1 sm:col-span-2 lg:col-span-3">
+                            <label class="font-bold text-slate-800">Riwayat Penyakit (Bila Ada)</label>
+                            <input type="text" id="edit-student-disease" name="riwayat_penyakit" placeholder="Asma, Alergi, dsb / Kosongkan bila sehat"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+
+                        <!-- Bagian Alamat -->
+                        <div class="space-y-1 sm:col-span-2 lg:col-span-3 border-t border-slate-100 pt-3">
+                            <label class="font-bold text-slate-800 text-[11px] uppercase tracking-wider text-emerald-800">Alamat Tempat Tinggal</label>
+                        </div>
+                        <div class="space-y-1 sm:col-span-2 lg:col-span-3">
+                            <label class="font-bold text-slate-800">Alamat Jalan / Dukuh / RT / RW</label>
+                            <input type="text" id="edit-student-address-street" name="alamat_jalan" placeholder="Contoh: Jl. Merbabu No. 12 RT 02 / RW 04"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Desa / Kelurahan</label>
+                            <input type="text" id="edit-student-village" name="desa" placeholder="Desa / Kelurahan"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Kecamatan</label>
+                            <input type="text" id="edit-student-district" name="kecamatan" placeholder="Kecamatan"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Kabupaten / Kota</label>
+                            <input type="text" id="edit-student-city" name="kabupaten" placeholder="Kabupaten Boyolali"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Provinsi</label>
+                            <input type="text" id="edit-student-province" name="provinsi" placeholder="Jawa Tengah"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Kode Pos</label>
+                            <input type="text" id="edit-student-postal-code" name="kode_pos" placeholder="57311"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB 3: ASAL SEKOLAH ================= -->
+                <div id="tab-content-sekolah" class="edit-tab-content space-y-4 hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                        <div class="space-y-1 sm:col-span-2">
+                            <label class="font-bold text-slate-800">Nama Asal Sekolah (SMP / MTs) *</label>
+                            <input type="text" id="edit-student-school" name="asal_sekolah" required 
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg uppercase focus:bg-white focus:outline-none focus:border-teal-500 font-semibold">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">NPSN Sekolah Asal</label>
+                            <input type="text" id="edit-student-school-npsn" name="npsn_sekolah" maxlength="20" placeholder="8 Digit NPSN"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Jenis Sekolah</label>
+                            <select id="edit-student-school-type" name="jenis_sekolah" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                <option value="SMP">SMP</option>
+                                <option value="MTs">MTs</option>
+                                <option value="Paket B">Paket B / Setara</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Status Sekolah</label>
+                            <select id="edit-student-school-status" name="status_sekolah" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500 font-medium">
+                                <option value="Negeri">Negeri</option>
+                                <option value="Swasta">Swasta</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Kabupaten Sekolah Asal</label>
+                            <input type="text" id="edit-student-school-city" name="kabupaten_sekolah" placeholder="Kabupaten Asal SMP"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Tahun Lulus</label>
+                            <input type="text" id="edit-student-graduation-year" name="tahun_lulus" placeholder="{{ date('Y') }}"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Nomor Ijazah / SKL</label>
+                            <input type="text" id="edit-student-ijazah-no" name="no_ijazah" placeholder="DN-03/..."
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-bold text-slate-800">Nilai Rata-rata Raport</label>
+                            <input type="number" step="0.01" min="0" max="100" id="edit-student-report-score" name="nilai_rata_raport" placeholder="85.50"
+                                   class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono focus:bg-white focus:outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB 4: DATA ORANG TUA & WALI ================= -->
+                <div id="tab-content-ortu" class="edit-tab-content space-y-4 hidden">
+                    
+                    <!-- Bagian Ayah -->
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex items-center gap-2 text-slate-900 font-extrabold text-xs border-b border-slate-200 pb-2">
+                            <i class="fa-solid fa-person text-blue-600"></i>
+                            <span>Data Ayah Kandung</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="font-bold text-slate-800">Nama Ayah</label>
+                                <input type="text" id="edit-student-father-name" name="nama_ayah" placeholder="Nama Lengkap Ayah"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Status Ayah</label>
+                                <select id="edit-student-father-status" name="status_ayah" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500 font-medium">
+                                    <option value="Masih Hidup">Masih Hidup</option>
+                                    <option value="Meninggal">Meninggal</option>
+                                    <option value="Cerai">Cerai</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">NIK Ayah</label>
+                                <input type="text" id="edit-student-father-nik" name="nik_ayah" maxlength="16" placeholder="NIK Ayah"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Pekerjaan Ayah</label>
+                                <input type="text" id="edit-student-father-job" name="pekerjaan_ayah" placeholder="Petani / Wiraswasta / PNS"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Pendidikan Ayah</label>
+                                <input type="text" id="edit-student-father-edu" name="pendidikan_ayah" placeholder="SMA / S1 / SMP"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Penghasilan Ayah</label>
+                                <input type="text" id="edit-student-father-income" name="penghasilan_ayah" placeholder="Rp 2.000.000 - Rp 5.000.000"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">No. HP / WA Ayah</label>
+                                <input type="text" id="edit-student-father-phone" name="no_hp_ayah" placeholder="08xxxxxxxxxx"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Ibu -->
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex items-center gap-2 text-slate-900 font-extrabold text-xs border-b border-slate-200 pb-2">
+                            <i class="fa-solid fa-person-dress text-pink-600"></i>
+                            <span>Data Ibu Kandung</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="font-bold text-slate-800">Nama Ibu</label>
+                                <input type="text" id="edit-student-mother-name" name="nama_ibu" placeholder="Nama Lengkap Ibu"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Status Ibu</label>
+                                <select id="edit-student-mother-status" name="status_ibu" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500 font-medium">
+                                    <option value="Masih Hidup">Masih Hidup</option>
+                                    <option value="Meninggal">Meninggal</option>
+                                    <option value="Cerai">Cerai</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">NIK Ibu</label>
+                                <input type="text" id="edit-student-mother-nik" name="nik_ibu" maxlength="16" placeholder="NIK Ibu"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Pekerjaan Ibu</label>
+                                <input type="text" id="edit-student-mother-job" name="pekerjaan_ibu" placeholder="Ibu Rumah Tangga / Pedagang"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Pendidikan Ibu</label>
+                                <input type="text" id="edit-student-mother-edu" name="pendidikan_ibu" placeholder="SMA / S1 / SMP"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Penghasilan Ibu</label>
+                                <input type="text" id="edit-student-mother-income" name="penghasilan_ibu" placeholder="Tidak Berpenghasilan / Rp 1.000.000"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">No. HP / WA Ibu</label>
+                                <input type="text" id="edit-student-mother-phone" name="no_hp_ibu" placeholder="08xxxxxxxxxx"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bagian Wali -->
+                    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex items-center gap-2 text-slate-900 font-extrabold text-xs border-b border-slate-200 pb-2">
+                            <i class="fa-solid fa-user-shield text-amber-600"></i>
+                            <span>Data Wali Siswa (Opsional / Bila Tinggal Bersama Wali)</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <div class="space-y-1 sm:col-span-2">
+                                <label class="font-bold text-slate-800">Nama Wali</label>
+                                <input type="text" id="edit-student-guardian-name" name="nama_wali" placeholder="Nama Lengkap Wali"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Hubungan Wali</label>
+                                <input type="text" id="edit-student-guardian-relation" name="hubungan_wali" placeholder="Paman / Kakek / Saudara"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">Pekerjaan Wali</label>
+                                <input type="text" id="edit-student-guardian-job" name="pekerjaan_wali" placeholder="Pekerjaan Wali"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="font-bold text-slate-800">No. HP Wali</label>
+                                <input type="text" id="edit-student-guardian-phone" name="no_hp_wali" placeholder="08xxxxxxxxxx"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div class="space-y-1 sm:col-span-3">
+                                <label class="font-bold text-slate-800">Alamat Wali</label>
+                                <input type="text" id="edit-student-guardian-address" name="alamat_wali" placeholder="Alamat tinggal wali"
+                                       class="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Footer Tombol Aksi Modal -->
+                <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <span class="text-[11px] text-slate-400 font-normal">
+                        <i class="fa-solid fa-circle-info text-emerald-600"></i> Pastikan seluruh data dicek sebelum disimpan.
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="closeEditStudentModal()" 
+                                class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 font-bold text-slate-600 transition cursor-pointer">
+                            Batal
+                        </button>
+                        <button type="submit" 
+                                class="px-5 py-2 bg-[#00a65a] hover:bg-[#008f4c] text-white rounded-lg font-bold transition flex items-center gap-1.5 shadow cursor-pointer">
+                            <i class="fa-solid fa-save"></i> Simpan Perubahan Lengkap
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>

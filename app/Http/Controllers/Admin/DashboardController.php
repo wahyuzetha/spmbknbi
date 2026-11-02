@@ -1305,19 +1305,21 @@ class DashboardController extends Controller
     public function deleteStudentManual($id)
     {
         $registration = Registration::with(['user', 'biodata', 'school', 'parent', 'documents', 'payments'])->findOrFail($id);
-        $name = $registration->user?->name ?? $registration->registration_number;
+        $name = $registration->user?->name ?? $registration->biodata?->nama_lengkap ?? $registration->registration_number;
 
-        $user = $registration->user;
-        $registration->biodata?->delete();
-        $registration->school?->delete();
-        $registration->parent?->delete();
-        $registration->documents()->delete();
-        $registration->payments()->delete();
-        $registration->delete();
+        DB::transaction(function () use ($registration): void {
+            $user = $registration->user;
+            $registration->biodata?->delete();
+            $registration->school?->delete();
+            $registration->parent?->delete();
+            $registration->documents()->delete();
+            $registration->payments()->delete();
+            $registration->delete();
 
-        if ($user) {
-            $user->delete();
-        }
+            if ($user) {
+                $user->delete();
+            }
+        });
 
         return back()->with('success', "Data calon siswa {$name} berhasil dihapus dari sistem.");
     }
@@ -1327,7 +1329,8 @@ class DashboardController extends Controller
      */
     public function bulkDeleteStudents(Request $request)
     {
-        $ids = array_values(array_filter(array_map('intval', (array) $request->input('ids', []))));
+        $rawIds = $request->input('ids', $request->input('registration_ids', []));
+        $ids = array_values(array_filter(array_map('intval', (array) $rawIds)));
         if (empty($ids)) {
             return back()->with('error', 'Silakan pilih setidaknya satu data calon siswa untuk dihapus.');
         }

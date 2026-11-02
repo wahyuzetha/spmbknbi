@@ -67,7 +67,7 @@ class DashboardController extends Controller
         $totalUniqueSchools = $schoolGroups->count();
 
         // 2. Query Pendaftar
-        $query = Registration::with(['user', 'major', 'biodata', 'parents', 'school', 'documents', 'verifier'])
+        $query = Registration::with(['user', 'major', 'secondChoiceMajor', 'biodata', 'parent', 'parents', 'school', 'documents', 'verifier'])
             ->latest();
 
         if ($request->filled('status')) {
