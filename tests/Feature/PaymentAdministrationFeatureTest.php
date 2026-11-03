@@ -190,4 +190,98 @@ class PaymentAdministrationFeatureTest extends TestCase
             'confirmed_by' => $panitia->id,
         ]);
     }
+
+    public function test_admin_dan_bendahara_dapat_menghapus_data_pembayaran_tanpa_menghapus_data_calon_siswa()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $bendahara = User::where('role', 'bendahara')->first();
+        $registration = Registration::with('user')->first();
+
+        // 1. Buat pembayaran untuk siswa
+        $paymentAdmin = Payment::create([
+            'registration_id' => $registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran SPMB Admin',
+            'amount' => 150000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+            'confirmed_at' => now(),
+        ]);
+
+        // Hapus pembayaran oleh Admin
+        $resAdmin = $this->actingAs($admin)->post(route('admin.administrasi.payment.delete', $paymentAdmin->id));
+        $resAdmin->assertRedirect(route('admin.dashboard', ['view' => 'administrasi']));
+        $resAdmin->assertSessionHas('success');
+
+        // Pastikan tabel pembayaran terhapus, TETAPI pendaftaran dan akun siswa TETAP ADA
+        $this->assertDatabaseMissing('pembayaran', ['id' => $paymentAdmin->id]);
+        $this->assertDatabaseHas('pendaftaran', ['id' => $registration->id]);
+        $this->assertDatabaseHas('siswa', ['id' => $registration->user_id]);
+
+        // 2. Buat pembayaran kedua untuk dihapus oleh Bendahara
+        $paymentBendahara = Payment::create([
+            'registration_id' => $registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran SPMB Bendahara',
+            'amount' => 300000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $bendahara->id,
+            'confirmed_at' => now(),
+        ]);
+
+        $resBendahara = $this->actingAs($bendahara)->post(route('bendahara.administrasi.payment.delete', $paymentBendahara->id));
+        $resBendahara->assertRedirect(route('bendahara.dashboard', ['view' => 'administrasi']));
+        $resBendahara->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('pembayaran', ['id' => $paymentBendahara->id]);
+        $this->assertDatabaseHas('pendaftaran', ['id' => $registration->id]);
+        $this->assertDatabaseHas('siswa', ['id' => $registration->user_id]);
+    }
+
+    public function test_admin_dan_bendahara_dapat_menghapus_seluruh_pembayaran_siswa_tanpa_menghapus_data_calon_siswa()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $registration = Registration::with('user')->first();
+
+        // Buat 2 pembayaran
+        Payment::create([
+            'registration_id' => $registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran Cicilan 1',
+            'amount' => 100000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+            'confirmed_at' => now(),
+        ]);
+
+        Payment::create([
+            'registration_id' => $registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran Cicilan 2',
+            'amount' => 200000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+            'confirmed_at' => now(),
+        ]);
+
+        $this->assertEquals(2, Payment::where('registration_id', $registration->id)->count());
+
+        // Hapus seluruh pembayaran untuk siswa ini
+        $res = $this->actingAs($admin)->post(route('admin.administrasi.payment.deleteAll', $registration->id));
+        $res->assertRedirect(route('admin.dashboard', ['view' => 'administrasi']));
+        $res->assertSessionHas('success');
+
+        // Pastikan seluruh pembayaran siswa terhapus, tetapi pendaftaran & siswa tetap utuh
+        $this->assertEquals(0, Payment::where('registration_id', $registration->id)->count());
+        $this->assertDatabaseHas('pendaftaran', ['id' => $registration->id]);
+        $this->assertDatabaseHas('siswa', ['id' => $registration->user_id]);
+    }
 }

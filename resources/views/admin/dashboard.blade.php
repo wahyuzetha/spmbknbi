@@ -3268,13 +3268,25 @@
                                                         <i class="fa-solid fa-print"></i>
                                                     </a>
 
-                                                    <!-- TOMBOL HAPUS DATA SISWA -->
-                                                    <button type="button" 
-                                                            onclick="confirmDeleteStudent('{{ $item->registration_id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg?->registration_number ?? '' }}')"
-                                                            class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
-                                                            title="Hapus Data Calon Siswa Ini">
-                                                        <i class="fa-solid fa-trash-can"></i>
-                                                    </button>
+                                                    <!-- TOMBOL HAPUS DATA PEMBAYARAN (DATA SISWA TETAP AMAN) -->
+                                                    @if($item->is_multi)
+                                                        <button type="button" 
+                                                                onclick="confirmDeleteAllPayments('{{ $item->registration_id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg?->registration_number ?? '' }}', '{{ $item->transaction_count }}', 'Rp {{ number_format($item->total_amount, 0, ',', '.') }}')"
+                                                                class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                                title="Hapus Seluruh Data Pembayaran Siswa Ini (Data Siswa Tetap Aman)">
+                                                            <i class="fa-solid fa-trash-can"></i>
+                                                        </button>
+                                                    @else
+                                                        @php $singlePayment = $item->payments->first(); @endphp
+                                                        @if($singlePayment)
+                                                            <button type="button" 
+                                                                    onclick="confirmDeletePayment('{{ $singlePayment->id }}', '{{ $singlePayment->invoice_number }}', 'Rp {{ number_format($singlePayment->amount, 0, ',', '.') }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg?->registration_number ?? '' }}')"
+                                                                    class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                                    title="Hapus Data Pembayaran Ini (Data Siswa Tetap Aman)">
+                                                                <i class="fa-solid fa-trash-can"></i>
+                                                            </button>
+                                                        @endif
+                                                    @endif
 
                                                 </div>
                                             </td>
@@ -3764,7 +3776,7 @@
                                     <th class="py-2.5 px-3">Keterangan</th>
                                     <th class="py-2.5 px-3 text-right">Nominal</th>
                                     <th class="py-2.5 px-3">Bendahara</th>
-                                    <th class="py-2.5 px-3 text-center w-24">Kwitansi</th>
+                                    <th class="py-2.5 px-3 text-center w-36">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="hist-tbody" class="divide-y divide-slate-100 font-medium">
@@ -3797,6 +3809,16 @@
 
     <!-- FORM TERSEMBUNYI UNTUK HAPUS PENGELUARAN KAS -->
     <form id="form-delete-expense" action="" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS TRANSAKSI PEMBAYARAN SATUAN -->
+    <form id="form-delete-payment" action="" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS SELURUH TRANSAKSI PEMBAYARAN SISWA -->
+    <form id="form-delete-all-payments" action="" method="POST" class="hidden">
         @csrf
     </form>
 
@@ -4896,11 +4918,19 @@
                             <td class="py-3 px-3 text-right font-mono font-bold text-emerald-700">${item.amount_formatted}</td>
                             <td class="py-3 px-3 text-slate-600">${item.confirmed_by}</td>
                             <td class="py-3 px-3 text-center">
-                                <a href="${item.print_url}" target="_blank" 
-                                   class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
-                                   title="Cetak Kwitansi Satuan Ini">
-                                    <i class="fa-solid fa-print text-emerald-600"></i> Cetak
-                                </a>
+                                <div class="inline-flex items-center justify-center gap-1.5">
+                                    <a href="${item.print_url}" target="_blank" 
+                                       class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-300 rounded text-slate-700 text-xs font-bold inline-flex items-center gap-1 shadow-2xs"
+                                       title="Cetak Kwitansi Satuan Ini">
+                                        <i class="fa-solid fa-print text-emerald-600"></i> Cetak
+                                    </a>
+                                    <button type="button" 
+                                            onclick="confirmDeletePayment('${item.id}', '${item.invoice_number}', '${item.amount_formatted}', '${studentName.replace(/'/g, "\\'")}', '${regNumber}')"
+                                            class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-rose-200 rounded text-rose-600 text-xs font-bold inline-flex items-center gap-1 shadow-2xs cursor-pointer transition"
+                                            title="Hapus Transaksi Pembayaran Ini (Data Siswa Tetap Aman)">
+                                        <i class="fa-solid fa-trash-can"></i> Hapus
+                                    </button>
+                                </div>
                             </td>
                         `;
                         tbody.appendChild(tr);
@@ -5156,6 +5186,26 @@
         function closeEditExpenseModal() {
             const modal = document.getElementById('modal-edit-expense');
             if (modal) modal.classList.add('hidden');
+        }
+
+        function confirmDeletePayment(id, invoice, amountFormatted, studentName, regNum) {
+            if (confirm(`Apakah Anda yakin ingin menghapus data pembayaran '${invoice}' (${amountFormatted}) untuk calon siswa '${studentName}' (${regNum})?\n\nPERINGATAN: Hanya data transaksi pembayaran yang akan dihapus dari sistem. Data pendaftaran dan akun calon siswa akan TETAP AMAN tersimpan.`)) {
+                const form = document.getElementById('form-delete-payment');
+                if (form) {
+                    form.action = `/admin/administrasi/pembayaran/${id}/delete`;
+                    form.submit();
+                }
+            }
+        }
+
+        function confirmDeleteAllPayments(regId, studentName, regNum, count, totalFormatted) {
+            if (confirm(`Siswa '${studentName}' (${regNum}) memiliki ${count} riwayat transaksi pembayaran (Total ${totalFormatted}).\n\nApakah Anda yakin ingin menghapus SELURUH riwayat pembayaran siswa ini?\n\n(Tips: Jika hanya ingin menghapus salah satu pembayaran yang salah input, klik tombol 'History' dan hapus transaksi yang dimaksud).\n\nCatatan: Data pendaftaran dan akun calon siswa akan TETAP AMAN tersimpan.`)) {
+                const form = document.getElementById('form-delete-all-payments');
+                if (form) {
+                    form.action = `/admin/administrasi/pembayaran/registration/${regId}/delete-all`;
+                    form.submit();
+                }
+            }
         }
 
         function confirmDeleteExpense(id, title, amountFormatted) {

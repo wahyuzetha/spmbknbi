@@ -842,9 +842,9 @@
                                                         <i class="fa-solid fa-graduation-cap"></i>
                                                     </button>
                                                     <button type="button" 
-                                                            onclick="confirmDeleteStudent('{{ $pReg->id }}', '{{ addslashes($pUser?->name ?? 'Calon Siswa') }}', '{{ $pReg->registration_number ?? '' }}')"
+                                                            onclick="confirmDeletePayment('{{ $pay->id }}', '{{ $pay->invoice_number }}', 'Rp {{ number_format($pay->amount, 0, ',', '.') }}', '{{ addslashes($pUser?->name ?? 'Calon Siswa') }}', '{{ $pReg->registration_number ?? '' }}')"
                                                             class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition cursor-pointer"
-                                                            title="Hapus Data Calon Siswa Ini">
+                                                            title="Hapus Data Pembayaran Ini (Data Siswa Tetap Aman)">
                                                         <i class="fa-solid fa-trash-can"></i>
                                                     </button>
                                                 @endif
@@ -1289,6 +1289,16 @@
             document.getElementById('modal-edit-student').classList.add('hidden');
         }
 
+        function confirmDeletePayment(id, invoice, amountFormatted, studentName, regNum) {
+            if (confirm(`Apakah Anda yakin ingin menghapus data pembayaran '${invoice}' (${amountFormatted}) untuk calon siswa '${studentName}' (${regNum})?\n\nPERINGATAN: Hanya data transaksi pembayaran yang akan dihapus dari sistem. Data pendaftaran dan akun calon siswa akan TETAP AMAN tersimpan.`)) {
+                const form = document.getElementById('form-delete-payment');
+                if (form) {
+                    form.action = `/panitia/administrasi/pembayaran/${id}/delete`;
+                    form.submit();
+                }
+            }
+        }
+
         function confirmDeleteStudent(id, name, regNum) {
             if (confirm(`Apakah Anda yakin ingin menghapus data calon siswa '${name}' (${regNum})? Seluruh data pendaftaran dan biodata akan dihapus.`)) {
                 const form = document.getElementById('form-delete-single-student');
@@ -1395,6 +1405,11 @@
 
     <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN -->
     <form id="form-delete-single-student" action="" method="POST" class="hidden">
+        @csrf
+    </form>
+
+    <!-- FORM TERSEMBUNYI UNTUK HAPUS PEMBAYARAN SATUAN -->
+    <form id="form-delete-payment" action="" method="POST" class="hidden">
         @csrf
     </form>
 

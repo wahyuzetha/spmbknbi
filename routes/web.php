@@ -99,6 +99,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
     Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
     Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
+    Route::post('/administrasi/pembayaran/{id}/delete', [AdminDashboardController::class, 'deletePayment'])->name('administrasi.payment.delete');
+    Route::post('/administrasi/pembayaran/registration/{registrationId}/delete-all', [AdminDashboardController::class, 'deleteAllPaymentsForRegistration'])->name('administrasi.payment.deleteAll');
+    Route::post('/administrasi/pembayaran/{id}/delete', [AdminDashboardController::class, 'deletePayment'])->name('administrasi.payment.delete');
+    Route::post('/administrasi/pembayaran/registration/{registrationId}/delete-all', [AdminDashboardController::class, 'deleteAllPaymentsForRegistration'])->name('administrasi.payment.deleteAll');
 
     // FITUR PENGELUARAN KAS SPMB (UANG CALON SISWA PENDAFTAR)
     Route::post('/administrasi/pengeluaran/store', [AdminDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
@@ -126,6 +130,8 @@ Route::middleware(['auth', 'role:panitia'])->prefix('panitia')->name('panitia.')
     Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
     Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
     Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
+    Route::post('/administrasi/pembayaran/{id}/delete', [AdminDashboardController::class, 'deletePayment'])->name('administrasi.payment.delete');
+    Route::post('/administrasi/pembayaran/registration/{registrationId}/delete-all', [AdminDashboardController::class, 'deleteAllPaymentsForRegistration'])->name('administrasi.payment.deleteAll');
 });
 
 // 6. Portal Bendahara SPMB (Protected by Auth & Role: bendahara)
@@ -136,6 +142,8 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
     Route::get('/administrasi/pembayaran/rekap/{registrationId}', [BendaharaDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
     Route::get('/administrasi/pembayaran/export-excel', [BendaharaDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
     Route::post('/administrasi/pembayaran/{registrationId}/change-major', [BendaharaDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
+    Route::post('/administrasi/pembayaran/{id}/delete', [BendaharaDashboardController::class, 'deletePayment'])->name('administrasi.payment.delete');
+    Route::post('/administrasi/pembayaran/registration/{registrationId}/delete-all', [BendaharaDashboardController::class, 'deleteAllPaymentsForRegistration'])->name('administrasi.payment.deleteAll');
     Route::post('/administrasi/pengeluaran/store', [BendaharaDashboardController::class, 'storeExpense'])->name('administrasi.expense.store');
     Route::post('/administrasi/pengeluaran/{id}/update', [BendaharaDashboardController::class, 'updateExpense'])->name('administrasi.expense.update');
     Route::post('/administrasi/pengeluaran/{id}/delete', [BendaharaDashboardController::class, 'deleteExpense'])->name('administrasi.expense.delete');

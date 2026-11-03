@@ -12,6 +12,7 @@ use App\Models\SystemSetting;
 use App\Services\PaymentExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class DashboardController extends Controller
@@ -328,5 +329,47 @@ class DashboardController extends Controller
         return redirect()
             ->route('bendahara.dashboard', ['view' => 'pengeluaran'])
             ->with('success', "Catatan pengeluaran '{$title}' telah dihapus.");
+    }
+
+    /**
+     * Hapus data transaksi pembayaran satuan oleh Bendahara (Data pendaftaran & akun calon siswa tetap aman tersimpan).
+     */
+    public function deletePayment(int $id)
+    {
+        $payment = Payment::with('registration.user')->findOrFail($id);
+        $invoiceNumber = $payment->invoice_number;
+        $amountFormatted = 'Rp '.number_format((float) $payment->amount, 0, ',', '.');
+        $studentName = $payment->registration?->user?->name ?? 'Calon Siswa';
+
+        if ($payment->proof_file && Storage::disk('public')->exists($payment->proof_file)) {
+            Storage::disk('public')->delete($payment->proof_file);
+        }
+
+        $payment->delete();
+
+        return redirect()->route('bendahara.dashboard', ['view' => 'administrasi'])
+            ->with('success', "Data transaksi pembayaran {$invoiceNumber} ({$amountFormatted}) atas nama {$studentName} berhasil dihapus. Data calon siswa tetap tersimpan aman.");
+    }
+
+    /**
+     * Hapus seluruh data transaksi pembayaran untuk satu calon siswa oleh Bendahara (Data pendaftaran & akun calon siswa tetap aman).
+     */
+    public function deleteAllPaymentsForRegistration(int $registrationId)
+    {
+        $registration = Registration::with(['user', 'payments'])->findOrFail($registrationId);
+        $studentName = $registration->user?->name ?? 'Calon Siswa';
+        $count = $registration->payments->count();
+        $totalAmount = $registration->payments->sum('amount');
+        $amountFormatted = 'Rp '.number_format((float) $totalAmount, 0, ',', '.');
+
+        foreach ($registration->payments as $payment) {
+            if ($payment->proof_file && Storage::disk('public')->exists($payment->proof_file)) {
+                Storage::disk('public')->delete($payment->proof_file);
+            }
+            $payment->delete();
+        }
+
+        return redirect()->route('bendahara.dashboard', ['view' => 'administrasi'])
+            ->with('success', "Seluruh data pembayaran ({$count} transaksi senilai {$amountFormatted}) atas nama {$studentName} berhasil dihapus. Data calon siswa tetap tersimpan aman.");
     }
 }
