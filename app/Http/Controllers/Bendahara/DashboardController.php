@@ -12,6 +12,7 @@ use App\Models\SystemSetting;
 use App\Services\PaymentExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DashboardController extends Controller
 {
@@ -121,31 +122,58 @@ class DashboardController extends Controller
      */
     public function storePayment(Request $request)
     {
+        if ($request->has('amount')) {
+            $request->merge([
+                'amount' => Payment::normalizeNominal($request->input('amount')),
+            ]);
+        }
+
+        if (! $request->filled('registration_id') && $request->filled('student_search')) {
+            $search = trim((string) $request->input('student_search'));
+            $matchedId = Registration::query()
+                ->where('registration_number', $search)
+                ->orWhere('registration_number', 'like', "%{$search}%")
+                ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$search}%"))
+                ->value('id');
+            if ($matchedId) {
+                $request->merge(['registration_id' => $matchedId]);
+            }
+        }
+
         $validated = $request->validate([
             'registration_id' => 'required|exists:pendaftaran,id',
             'amount' => 'required|numeric|min:1000',
             'payment_date' => 'required|date',
             'payment_type' => 'nullable|string|max:150',
             'notes' => 'nullable|string|max:255',
+        ], [
+            'registration_id.required' => 'Silakan pilih calon siswa terlebih dahulu sebelum menyimpan pembayaran.',
+            'registration_id.exists' => 'Data calon siswa yang dipilih tidak ditemukan di database.',
+            'amount.required' => 'Besaran nominal pembayaran wajib diisi.',
+            'amount.numeric' => 'Besaran nominal pembayaran harus berupa angka yang valid.',
+            'amount.min' => 'Nominal pembayaran minimal adalah Rp 1.000.',
+            'payment_date.required' => 'Tanggal pembayaran wajib diisi.',
+            'payment_date.date' => 'Format tanggal pembayaran tidak valid.',
         ]);
 
         $registration = Registration::with('user')->findOrFail($validated['registration_id']);
+        $paymentType = Str::limit(trim((string) ($validated['payment_type'] ?? 'Pembayaran SPMB')) ?: 'Pembayaran SPMB', 50, '');
 
-        $payment = Payment::create([
+        $payment = DB::transaction(fn () => Payment::create([
             'registration_id' => $registration->id,
             'invoice_number' => Payment::generateInvoiceNumber(),
-            'payment_type' => $validated['payment_type'] ?? 'Pembayaran SPMB',
+            'payment_type' => $paymentType,
             'amount' => $validated['amount'],
             'payment_date' => $validated['payment_date'],
             'payment_method' => 'tunai',
             'status' => 'confirmed',
-            'notes' => $validated['notes'] ?: 'Pembayaran tunai diterima langsung oleh Bendahara SPMB',
+            'notes' => ! empty($validated['notes']) ? $validated['notes'] : 'Pembayaran tunai diterima langsung oleh Bendahara SPMB',
             'confirmed_by' => auth()->id(),
             'confirmed_at' => now(),
-        ]);
+        ]));
 
         $studentName = $registration->user->name ?? 'Calon Siswa';
-        $nominalFormatted = 'Rp '.number_format($payment->amount, 0, ',', '.');
+        $nominalFormatted = 'Rp '.number_format((float) $payment->amount, 0, ',', '.');
 
         return redirect()->route('bendahara.dashboard', ['view' => 'administrasi'])
             ->with('success', "Pembayaran tunai {$nominalFormatted} atas nama {$studentName} ({$registration->registration_number}) berhasil disimpan dan otomatis terverifikasi oleh Bendahara!")
@@ -221,6 +249,12 @@ class DashboardController extends Controller
      */
     public function storeExpense(Request $request)
     {
+        if ($request->has('amount')) {
+            $request->merge([
+                'amount' => Payment::normalizeNominal($request->input('amount')),
+            ]);
+        }
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'amount' => 'required|numeric|min:100',
@@ -230,7 +264,7 @@ class DashboardController extends Controller
             'description' => 'required|string',
         ]);
 
-        $expense = Expense::create([
+        $expense = DB::transaction(fn () => Expense::create([
             'expense_code' => Expense::generateExpenseCode(),
             'title' => $validated['title'],
             'category' => ! empty($validated['category']) ? $validated['category'] : 'Operasional SPMB',
@@ -239,11 +273,11 @@ class DashboardController extends Controller
             'description' => $validated['description'],
             'recipient' => ! empty($validated['recipient']) ? $validated['recipient'] : 'Panitia / Vendor',
             'created_by' => auth()->id(),
-        ]);
+        ]));
 
         return redirect()
             ->route('bendahara.dashboard', ['view' => 'pengeluaran'])
-            ->with('success', 'Pengeluaran kas SPMB sebesar Rp '.number_format($expense->amount, 0, ',', '.')." untuk '{$expense->title}' berhasil dicatat.");
+            ->with('success', 'Pengeluaran kas SPMB sebesar Rp '.number_format((float) $expense->amount, 0, ',', '.')." untuk '{$expense->title}' berhasil dicatat.");
     }
 
     /**
@@ -252,6 +286,12 @@ class DashboardController extends Controller
     public function updateExpense(Request $request, int $id)
     {
         $expense = Expense::findOrFail($id);
+
+        if ($request->has('amount')) {
+            $request->merge([
+                'amount' => Payment::normalizeNominal($request->input('amount')),
+            ]);
+        }
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',

@@ -255,14 +255,22 @@
 
             <!-- NOTIFIKASI SUKSES / ERROR -->
             @if(session('success'))
-                <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between shadow-sm">
+                <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center justify-between gap-3 shadow-sm">
                     <div class="flex items-center gap-2">
                         <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
                         <span>{{ session('success') }}</span>
                     </div>
-                    <button type="button" onclick="this.parentElement.remove()" class="text-emerald-700 hover:text-emerald-900">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
+                    <div class="flex items-center gap-2">
+                        @if(session('last_payment_id'))
+                            <a href="{{ route('admin.administrasi.payment.receipt', session('last_payment_id')) }}" target="_blank"
+                               class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition flex items-center gap-1 shadow-xs whitespace-nowrap">
+                                <i class="fa-solid fa-print"></i> Cetak Kwitansi Sekarang
+                            </a>
+                        @endif
+                        <button type="button" onclick="this.closest('div.p-4').remove()" class="text-emerald-700 hover:text-emerald-900">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
             @endif
 
@@ -1462,11 +1470,6 @@
                     </div>
 
                 </div>
-
-                <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN -->
-                <form id="form-delete-single-student" action="" method="POST" class="hidden">
-                    @csrf
-                </form>
 
                 <!-- ================= MODAL TAMBAH CALON SISWA (+ MODAL) ================= -->
                 <div id="modal-add-student" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 {{ $errors->any() && old('nama_siswa') ? '' : 'hidden' }}">
@@ -3150,14 +3153,14 @@
                                             <!-- NO PENDAFTAR -->
                                             <td class="py-3.5 px-3">
                                                 <span class="font-mono font-black text-slate-900 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
-                                                    {{ $reg->registration_number ?? '-' }}
+                                                    {{ $reg?->registration_number ?? '-' }}
                                                 </span>
                                             </td>
 
                                             <!-- NAMA CALON SISWA (KONTAK & ASAL SEKOLAH TELAH DIHILANGKAN SESUAI PERMINTAAN) -->
                                             <td class="py-3.5 px-3">
                                                 <div class="font-bold text-slate-900 text-xs uppercase">
-                                                    {{ $userSiswa->name ?? 'Calon Siswa' }}
+                                                    {{ $userSiswa?->name ?? 'Calon Siswa' }}
                                                 </div>
                                             </td>
 
@@ -3166,21 +3169,23 @@
                                                 <div class="flex items-start justify-between gap-2">
                                                     <div>
                                                         <div class="font-bold text-slate-800">
-                                                            {{ $major->name ?? '-' }}
+                                                            {{ $major?->name ?? '-' }}
                                                         </div>
-                                                        @if(!empty($major->industry_class))
+                                                        @if(!empty($major?->industry_class))
                                                             <span class="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-teal-50 border border-teal-200 text-teal-800 font-bold text-[10px]">
                                                                 <i class="fa-solid fa-industry text-teal-600"></i>
                                                                 {{ $major->industry_class }}
                                                             </span>
                                                         @endif
                                                     </div>
-                                                    <button type="button" 
-                                                            onclick="openChangeMajorModal('{{ $reg->id }}', '{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number }}', '{{ $reg->major_id }}', '{{ addslashes($major->name ?? '') }}')"
-                                                            class="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 transition shadow-2xs whitespace-nowrap cursor-pointer"
-                                                            title="Ubah Jurusan Calon Siswa Ini">
-                                                        <i class="fa-solid fa-pen-to-square text-[10px]"></i> Ubah
-                                                    </button>
+                                                    @if($reg)
+                                                        <button type="button" 
+                                                                onclick="openChangeMajorModal('{{ $reg->id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number }}', '{{ $reg->major_id }}', '{{ addslashes($major?->name ?? '') }}')"
+                                                                class="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-[10px] font-bold flex items-center gap-1 transition shadow-2xs whitespace-nowrap cursor-pointer"
+                                                                title="Ubah Jurusan Calon Siswa Ini">
+                                                            <i class="fa-solid fa-pen-to-square text-[10px]"></i> Ubah
+                                                        </button>
+                                                    @endif
                                                 </div>
                                             </td>
 
@@ -3230,17 +3235,19 @@
                                             <td class="py-3.5 px-3 text-center">
                                                 <div class="flex items-center justify-center gap-1.5">
                                                     
-                                                    <!-- TOMBOL UBAH KHUSUS JURUSAN -->
-                                                    <button type="button" 
-                                                            onclick="openChangeMajorModal('{{ $reg->id }}', '{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number }}', '{{ $reg->major_id }}', '{{ addslashes($major->name ?? '') }}')"
-                                                            class="p-1.5 w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
-                                                            title="Ubah Jurusan Calon Siswa Ini">
-                                                        <i class="fa-solid fa-graduation-cap"></i>
-                                                    </button>
+                                                    @if($reg)
+                                                        <!-- TOMBOL UBAH KHUSUS JURUSAN -->
+                                                        <button type="button" 
+                                                                onclick="openChangeMajorModal('{{ $reg->id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number }}', '{{ $reg->major_id }}', '{{ addslashes($major?->name ?? '') }}')"
+                                                                class="p-1.5 w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
+                                                                title="Ubah Jurusan Calon Siswa Ini">
+                                                            <i class="fa-solid fa-graduation-cap"></i>
+                                                        </button>
+                                                    @endif
 
                                                     <!-- TOMBOL RIWAYAT LENGKAP TRANSAKSI -->
                                                     <button type="button" 
-                                                            onclick='openPaymentHistoryModal("{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}", "{{ $reg->registration_number }}", "Rp {{ number_format($item->total_amount, 0, ',', '.') }}", {{ json_encode($historyList) }}, "{{ route('admin.administrasi.payment.globalReceipt', $item->registration_id) }}")'
+                                                            onclick='openPaymentHistoryModal("{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}", "{{ $reg?->registration_number ?? '-' }}", "Rp {{ number_format($item->total_amount, 0, ',', '.') }}", {{ json_encode($historyList) }}, "{{ route('admin.administrasi.payment.globalReceipt', $item->registration_id) }}")'
                                                             class="p-1.5 w-7 h-7 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg border border-indigo-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
                                                             title="Lihat Rincian History Transaksi Siswa Ini">
                                                         <i class="fa-solid fa-clock-rotate-left"></i>
@@ -3248,7 +3255,7 @@
 
                                                     <!-- TOMBOL INPUT TAMBAH PEMBAYARAN SISWA INI (CICILAN / BERIKUTNYA) -->
                                                     <button type="button" 
-                                                            onclick="openInputPaymentModal('{{ $item->registration_id }}', '{{ addslashes($userSiswa->name ?? '') }}', '{{ $reg->registration_number }}')"
+                                                            onclick="openInputPaymentModal('{{ $item->registration_id }}', '{{ addslashes($userSiswa?->name ?? '') }}', '{{ $reg?->registration_number ?? '' }}')"
                                                             class="p-1.5 w-7 h-7 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg border border-emerald-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
                                                             title="+ Tambah Pembayaran Kasir untuk Siswa Ini">
                                                         <i class="fa-solid fa-plus"></i>
@@ -3263,7 +3270,7 @@
 
                                                     <!-- TOMBOL HAPUS DATA SISWA -->
                                                     <button type="button" 
-                                                            onclick="confirmDeleteStudent('{{ $item->registration_id }}', '{{ addslashes($userSiswa->name ?? 'Calon Siswa') }}', '{{ $reg->registration_number ?? '' }}')"
+                                                            onclick="confirmDeleteStudent('{{ $item->registration_id }}', '{{ addslashes($userSiswa?->name ?? 'Calon Siswa') }}', '{{ $reg?->registration_number ?? '' }}')"
                                                             class="p-1.5 w-7 h-7 bg-white hover:bg-rose-50 text-rose-600 rounded-lg border border-rose-200 font-bold text-xs inline-flex items-center justify-center transition shadow-2xs cursor-pointer"
                                                             title="Hapus Data Calon Siswa Ini">
                                                         <i class="fa-solid fa-trash-can"></i>
@@ -3586,8 +3593,13 @@
 
             @endif
 
+            <!-- FORM TERSEMBUNYI UNTUK HAPUS SISWA SATUAN -->
+            <form id="form-delete-single-student" action="" method="POST" class="hidden">
+                @csrf
+            </form>
+
             <!-- ================= MODAL INPUT PEMBAYARAN TUNAI (BENDAHARA) ================= -->
-            <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+            <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 {{ $errors->any() && old('payment_date') && !old('nama_siswa') ? '' : 'hidden' }}">
                 <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
                     
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -3612,7 +3624,7 @@
                             
                             <!-- INPUT FILTER LIVE DROPDOWN -->
                             <div class="relative">
-                                <input type="text" id="picker-search-input" onkeyup="filterCandidateDropdown()" 
+                                <input type="text" name="student_search" id="picker-search-input" onkeyup="filterCandidateDropdown()" onkeydown="if(event.key==='Enter'){event.preventDefault();}"
                                        placeholder="Ketik nama siswa atau nomor pendaftar untuk mencari..." 
                                        class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:border-teal-500 mb-1.5">
                                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
@@ -3620,9 +3632,10 @@
 
                             <select name="registration_id" id="payment-student-select" required onchange="onPaymentStudentSelected(this)"
                                     class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500">
-                                <option value="" disabled selected>-- Pilih Calon Siswa Terdaftar (Semua Data) --</option>
+                                <option value="" disabled {{ old('registration_id') ? '' : 'selected' }}>-- Pilih Calon Siswa Terdaftar (Semua Data) --</option>
                                 @foreach($candidatesForPayment ?? [] as $cIdx => $c)
                                     <option value="{{ $c->id }}" 
+                                            {{ (string) old('registration_id') === (string) $c->id ? 'selected' : '' }}
                                             class="candidate-option"
                                             data-number="{{ $c->registration_number }}" 
                                             data-name="{{ $c->name }}" 
@@ -3652,7 +3665,7 @@
                         <!-- TANGGAL PEMBAYARAN -->
                         <div class="space-y-1">
                             <label class="font-bold text-slate-800">Tanggal Pembayaran *</label>
-                            <input type="date" name="payment_date" id="payment-input-date" required value="{{ date('Y-m-d') }}" 
+                            <input type="date" name="payment_date" id="payment-input-date" required value="{{ old('payment_date', date('Y-m-d')) }}" 
                                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
                         </div>
 
@@ -3662,7 +3675,7 @@
                                 <span>Besaran Nominal Pembayaran (Rp) *</span>
                                 <span class="text-[11px] text-slate-500 font-mono" id="nominal-preview">Rp 0</span>
                             </label>
-                            <input type="number" name="amount" id="payment-input-amount" required min="1000" step="1000" placeholder="Contoh: 150000"
+                            <input type="text" inputmode="numeric" name="amount" id="payment-input-amount" required value="{{ old('amount') }}" placeholder="Contoh: 150000 atau 150.000"
                                    oninput="updateNominalPreview(this.value)"
                                    class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm font-black font-mono text-emerald-800 focus:bg-white focus:outline-none focus:border-teal-500">
                             
@@ -3681,7 +3694,7 @@
                         <!-- KETERANGAN (SEBELUMNYA CATATAN) -->
                         <div class="space-y-1">
                             <label class="font-bold text-slate-800">Keterangan (Opsional)</label>
-                            <input type="text" name="notes" placeholder="Contoh: Pembayaran tunai lunas di loket bendahara SPMB"
+                            <input type="text" name="notes" value="{{ old('notes') }}" placeholder="Contoh: Pembayaran tunai lunas di loket bendahara SPMB"
                                    class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:bg-white focus:outline-none focus:border-teal-500">
                         </div>
 
@@ -4798,6 +4811,7 @@
 
             const filter = input.value.toLowerCase().trim();
             let countVisible = 0;
+            let firstVisibleVal = null;
 
             for (let i = 0; i < select.options.length; i++) {
                 const opt = select.options[i];
@@ -4806,9 +4820,22 @@
                 const text = opt.text.toLowerCase();
                 if (!filter || text.includes(filter)) {
                     opt.style.display = '';
+                    opt.hidden = false;
                     countVisible++;
+                    if (firstVisibleVal === null) {
+                        firstVisibleVal = opt.value;
+                    }
                 } else {
                     opt.style.display = 'none';
+                    opt.hidden = true;
+                }
+            }
+
+            if (filter && firstVisibleVal !== null) {
+                const currentOpt = select.options[select.selectedIndex];
+                if (!currentOpt || !currentOpt.value || currentOpt.hidden) {
+                    select.value = firstVisibleVal;
+                    onPaymentStudentSelected(select);
                 }
             }
 
@@ -4825,7 +4852,8 @@
         function updateNominalPreview(val) {
             const preview = document.getElementById('nominal-preview');
             if (!preview) return;
-            const num = parseInt(val) || 0;
+            const cleanDigits = String(val ?? '').replace(/,\d{1,2}$/, '').replace(/[^0-9]/g, '');
+            const num = parseInt(cleanDigits, 10) || 0;
             preview.innerText = 'Rp ' + num.toLocaleString('id-ID');
         }
 

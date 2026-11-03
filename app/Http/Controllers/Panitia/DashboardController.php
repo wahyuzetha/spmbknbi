@@ -12,6 +12,7 @@ use App\Models\StudentSchool;
 use App\Models\SystemSetting;
 use App\Services\StudentExportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -95,8 +96,25 @@ class DashboardController extends Controller
 
         $registrations = $query->paginate(12)->withQueryString();
 
-        // 3. Data Pembayaran
+        // 3. Data Pembayaran & Daftar Calon Siswa untuk Input Pembayaran
         $payments = Payment::with(['registration.user', 'registration.major'])->latest()->paginate(10);
+
+        $candidatesForPayment = DB::table('pendaftaran')
+            ->leftJoin('siswa', 'pendaftaran.user_id', '=', 'siswa.id')
+            ->leftJoin('jurusan', 'pendaftaran.major_id', '=', 'jurusan.id')
+            ->leftJoin('asal_sekolah_siswa', 'pendaftaran.id', '=', 'asal_sekolah_siswa.registration_id')
+            ->select([
+                'pendaftaran.id',
+                'pendaftaran.registration_number',
+                DB::raw("COALESCE(siswa.name, 'Calon Siswa') as name"),
+                DB::raw("COALESCE(siswa.phone, '-') as phone"),
+                DB::raw("COALESCE(asal_sekolah_siswa.asal_sekolah, '-') as school"),
+                DB::raw("COALESCE(jurusan.name, '-') as major"),
+                DB::raw("COALESCE(jurusan.industry_class, '') as industry_class"),
+            ])
+            ->orderByDesc('pendaftaran.created_at')
+            ->orderByDesc('pendaftaran.id')
+            ->get();
 
         // 4. Pengaturan Sistem (Dari Memoized Cache)
         $settings = collect(SystemSetting::allCached());
@@ -117,6 +135,7 @@ class DashboardController extends Controller
             'totalNeedsFix',
             'registrations',
             'payments',
+            'candidatesForPayment',
             'settings',
             'chartMajorNames',
             'chartMajorAliases',

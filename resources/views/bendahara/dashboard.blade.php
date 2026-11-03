@@ -740,7 +740,7 @@
     </form>
 
     <!-- ================= MODAL INPUT PEMBAYARAN TUNAI (BENDAHARA) ================= -->
-    <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 hidden">
+    <div id="modal-input-payment" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 {{ $errors->any() && old('payment_date') ? '' : 'hidden' }}">
         <div class="bg-white rounded-2xl max-w-xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 overflow-y-auto max-h-[90vh] animate-in fade-in duration-150">
             
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -764,7 +764,7 @@
                     </label>
                     
                     <div class="relative">
-                        <input type="text" id="picker-search-input" onkeyup="filterCandidateDropdown()" 
+                        <input type="text" id="picker-search-input" name="student_search" value="{{ old('student_search') }}" onkeyup="filterCandidateDropdown()" onkeydown="if(event.key==='Enter'){event.preventDefault();}" 
                                placeholder="Ketik nama siswa atau nomor pendaftar untuk mencari..." 
                                class="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium focus:bg-white focus:outline-none focus:border-teal-500 mb-1.5">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
@@ -772,9 +772,10 @@
 
                     <select name="registration_id" id="payment-student-select" required onchange="onPaymentStudentSelected(this)"
                             class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-teal-500">
-                        <option value="" disabled selected>-- Pilih Calon Siswa Terdaftar (Semua Data) --</option>
+                        <option value="" disabled {{ old('registration_id') ? '' : 'selected' }}>-- Pilih Calon Siswa Terdaftar (Semua Data) --</option>
                         @foreach($candidatesForPayment ?? [] as $c)
                             <option value="{{ $c->id }}" 
+                                    {{ (string) old('registration_id') === (string) $c->id ? 'selected' : '' }}
                                     class="candidate-option"
                                     data-number="{{ $c->registration_number }}" 
                                     data-name="{{ $c->name }}" 
@@ -804,7 +805,7 @@
                 <!-- TANGGAL PEMBAYARAN -->
                 <div class="space-y-1">
                     <label class="font-bold text-slate-800">Tanggal Pembayaran *</label>
-                    <input type="date" name="payment_date" id="payment-input-date" required value="{{ date('Y-m-d') }}" 
+                    <input type="date" name="payment_date" id="payment-input-date" required value="{{ old('payment_date', date('Y-m-d')) }}" 
                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-semibold focus:bg-white focus:outline-none focus:border-teal-500">
                 </div>
 
@@ -814,7 +815,7 @@
                         <span>Besaran Nominal Pembayaran (Rp) *</span>
                         <span class="text-[11px] text-slate-500 font-mono" id="nominal-preview">Rp 0</span>
                     </label>
-                    <input type="number" name="amount" id="payment-input-amount" required min="1000" step="1000" placeholder="Contoh: 150000"
+                    <input type="text" inputmode="numeric" name="amount" id="payment-input-amount" required value="{{ old('amount') }}" placeholder="Contoh: 150000 atau 150.000"
                            oninput="updateNominalPreview(this.value)"
                            class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-900 focus:outline-none focus:border-teal-500 font-mono">
                     
@@ -1057,7 +1058,8 @@
         }
 
         function updateNominalPreview(val) {
-            const num = parseInt(val) || 0;
+            const cleaned = String(val ?? '').replace(/,\d{1,2}$/, '').replace(/[^0-9]/g, '');
+            const num = parseInt(cleaned, 10) || 0;
             document.getElementById('nominal-preview').innerText = 'Rp ' + num.toLocaleString('id-ID');
         }
 
@@ -1067,16 +1069,27 @@
             const select = document.getElementById('payment-student-select');
             const options = select.getElementsByClassName('candidate-option');
             let visibleCount = 0;
+            let firstVisibleOpt = null;
 
             for (let i = 0; i < options.length; i++) {
                 const opt = options[i];
                 const text = (opt.dataset.number + ' ' + opt.dataset.name + ' ' + opt.dataset.major + ' ' + opt.dataset.school).toLowerCase();
                 if (text.includes(filter)) {
                     opt.style.display = '';
+                    opt.hidden = false;
                     visibleCount++;
+                    if (!firstVisibleOpt) {
+                        firstVisibleOpt = opt;
+                    }
                 } else {
                     opt.style.display = 'none';
+                    opt.hidden = true;
                 }
+            }
+
+            if (filter && firstVisibleOpt) {
+                select.value = firstVisibleOpt.value;
+                onPaymentStudentSelected(select);
             }
 
             document.getElementById('student-count-indicator').innerText = filter ? `Ditemukan ${visibleCount} Calon Siswa` : `Menampilkan Semua Data (${options.length} Calon Siswa)`;

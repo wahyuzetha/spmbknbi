@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Payment;
 use App\Models\SystemSetting;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
@@ -16,16 +18,16 @@ class PaymentExportService
     /**
      * Generate and download styled Excel (.xlsx) file containing payment administration data.
      */
-    public function exportExcel(string $search = null): StreamedResponse
+    public function exportExcel(?string $search = null): StreamedResponse
     {
         $allPayments = Payment::with([
             'registration.user',
             'registration.major',
             'confirmedBy',
         ])
-        ->latest('payment_date')
-        ->latest('id')
-        ->get();
+            ->latest('payment_date')
+            ->latest('id')
+            ->get();
 
         // Mengelompokkan per calon siswa (registration_id) sesuai tabel administrasi global
         $grouped = $allPayments->groupBy('registration_id')->map(function ($items, $registrationId) {
@@ -58,6 +60,7 @@ class PaymentExportService
                 $regNo = strtolower($item->registration->registration_number ?? '');
                 $name = strtolower($item->registration->user->name ?? '');
                 $major = strtolower($item->registration->major->name ?? '');
+
                 return str_contains($regNo, $s) || str_contains($name, $s) || str_contains($major, $s);
             })->values();
         }
@@ -67,7 +70,7 @@ class PaymentExportService
         $totalSiswa = $grouped->count();
         $totalTransaksi = $allPayments->count();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Rekap Pembayaran SPMB');
         $sheet->setShowGridLines(true);
@@ -75,7 +78,7 @@ class PaymentExportService
         // KOP / JUDUL DOKUMEN RESMI
         $sheet->setCellValue('A1', 'REKAPITULASI GLOBAL ADMINISTRASI PEMBAYARAN SPMB');
         $sheet->setCellValue('A2', strtoupper($schoolName));
-        $sheet->setCellValue('A3', 'Waktu Unduh: ' . date('d F Y, H:i') . ' WIB | Total Siswa Bayar: ' . $totalSiswa . ' Siswa | Total Kas Masuk: Rp ' . number_format($totalKas, 0, ',', '.'));
+        $sheet->setCellValue('A3', 'Waktu Unduh: '.date('d F Y, H:i').' WIB | Total Siswa Bayar: '.$totalSiswa.' Siswa | Total Kas Masuk: Rp '.number_format($totalKas, 0, ',', '.'));
 
         $sheet->mergeCells('A1:J1');
         $sheet->mergeCells('A2:J2');
@@ -87,9 +90,9 @@ class PaymentExportService
 
         // RINGKASAN METRIK KEUANGAN (ROW 5)
         $sheet->setCellValue('A5', 'RINGKASAN:');
-        $sheet->setCellValue('B5', 'Total Pemasukan Kas: Rp ' . number_format($totalKas, 0, ',', '.'));
-        $sheet->setCellValue('D5', 'Jumlah Calon Siswa: ' . $totalSiswa . ' Siswa');
-        $sheet->setCellValue('F5', 'Jumlah Transaksi Kasir: ' . $totalTransaksi . ' Transaksi');
+        $sheet->setCellValue('B5', 'Total Pemasukan Kas: Rp '.number_format($totalKas, 0, ',', '.'));
+        $sheet->setCellValue('D5', 'Jumlah Calon Siswa: '.$totalSiswa.' Siswa');
+        $sheet->setCellValue('F5', 'Jumlah Transaksi Kasir: '.$totalTransaksi.' Transaksi');
         $sheet->mergeCells('B5:C5');
         $sheet->mergeCells('D5:E5');
         $sheet->mergeCells('F5:H5');
@@ -119,11 +122,11 @@ class PaymentExportService
         $headerRow = 7;
         $colIndex = 1;
         foreach ($headers as $headerText) {
-            $sheet->setCellValueExplicit([$colIndex, $headerRow], $headerText, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([$colIndex, $headerRow], $headerText, DataType::TYPE_STRING);
             $colIndex++;
         }
 
-        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $lastCol = Coordinate::stringFromColumnIndex(count($headers));
         $headerRange = "A{$headerRow}:{$lastCol}{$headerRow}";
 
         $sheet->getStyle($headerRange)->applyFromArray([
@@ -159,24 +162,24 @@ class PaymentExportService
             $userSiswa = $reg?->user;
             $major = $reg?->major;
 
-            $dateFormatted = $item->last_payment_date ? date('d/m/Y', strtotime($item->last_payment_date)) : '-';
+            $dateFormatted = $item->last_payment_date ? date('d/m/Y', strtotime((string) $item->last_payment_date)) : '-';
             $petugas = $item->last_confirmed_by->name ?? 'Bendahara SPMB';
-            $txInfo = $item->is_multi ? $item->transaction_count . 'x Transaksi' : '1x Setoran';
+            $txInfo = $item->is_multi ? $item->transaction_count.'x Transaksi' : '1x Setoran';
 
-            $sheet->setCellValueExplicit([1, $currentRow], (string) $no++, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC);
-            $sheet->setCellValueExplicit([2, $currentRow], (string) ($reg->registration_number ?? '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([3, $currentRow], (string) strtoupper($userSiswa->name ?? 'Calon Siswa'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([4, $currentRow], (string) ($major->name ?? '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([5, $currentRow], (string) ($major->industry_class ?? '-'), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            
+            $sheet->setCellValueExplicit([1, $currentRow], (string) $no++, DataType::TYPE_NUMERIC);
+            $sheet->setCellValueExplicit([2, $currentRow], (string) ($reg?->registration_number ?? '-'), DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([3, $currentRow], (string) strtoupper($userSiswa?->name ?? 'Calon Siswa'), DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([4, $currentRow], (string) ($major?->name ?? '-'), DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([5, $currentRow], (string) ($major?->industry_class ?? '-'), DataType::TYPE_STRING);
+
             // Nominal sebagai angka murni dengan Number Format Rupiah
             $sheet->setCellValue([6, $currentRow], (float) $item->total_amount);
             $sheet->getStyle("F{$currentRow}")->getNumberFormat()->setFormatCode('"Rp" #,##0');
 
-            $sheet->setCellValueExplicit([7, $currentRow], (string) $txInfo, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([8, $currentRow], (string) $dateFormatted, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([9, $currentRow], (string) $petugas, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit([10, $currentRow], 'TERVERIFIKASI', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([7, $currentRow], (string) $txInfo, DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([8, $currentRow], (string) $dateFormatted, DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([9, $currentRow], (string) $petugas, DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([10, $currentRow], 'TERVERIFIKASI', DataType::TYPE_STRING);
 
             // Zebra striping
             if ($currentRow % 2 === 0) {
@@ -193,7 +196,7 @@ class PaymentExportService
 
         // BORDER DATA & FORMAT CELL ALIGNMENT
         if ($lastDataRow >= $headerRow + 1) {
-            $sheet->getStyle("A" . ($headerRow + 1) . ":{$lastCol}{$lastDataRow}")->applyFromArray([
+            $sheet->getStyle('A'.($headerRow + 1).":{$lastCol}{$lastDataRow}")->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => Border::BORDER_THIN,
@@ -206,16 +209,16 @@ class PaymentExportService
             ]);
 
             // Alignment spesifik
-            $sheet->getStyle("A" . ($headerRow + 1) . ":A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("B" . ($headerRow + 1) . ":B{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("E" . ($headerRow + 1) . ":E{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("F" . ($headerRow + 1) . ":F{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            $sheet->getStyle("G" . ($headerRow + 1) . ":G{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("H" . ($headerRow + 1) . ":H{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("J" . ($headerRow + 1) . ":J{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('A'.($headerRow + 1).":A{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('B'.($headerRow + 1).":B{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('E'.($headerRow + 1).":E{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('F'.($headerRow + 1).":F{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+            $sheet->getStyle('G'.($headerRow + 1).":G{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('H'.($headerRow + 1).":H{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('J'.($headerRow + 1).":J{$lastDataRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             // Warna hijau terang pada status
-            $sheet->getStyle("J" . ($headerRow + 1) . ":J{$lastDataRow}")->applyFromArray([
+            $sheet->getStyle('J'.($headerRow + 1).":J{$lastDataRow}")->applyFromArray([
                 'font' => ['bold' => true, 'color' => ['rgb' => '166534']],
             ]);
         }
@@ -224,7 +227,7 @@ class PaymentExportService
         $totalRow = $currentRow;
         $sheet->setCellValue("A{$totalRow}", 'TOTAL KESELURUHAN');
         $sheet->mergeCells("A{$totalRow}:E{$totalRow}");
-        $sheet->setCellValue("F{$totalRow}", "=SUM(F" . ($headerRow + 1) . ":F{$lastDataRow})");
+        $sheet->setCellValue("F{$totalRow}", '=SUM(F'.($headerRow + 1).":F{$lastDataRow})");
         $sheet->getStyle("F{$totalRow}")->getNumberFormat()->setFormatCode('"Rp" #,##0');
         $sheet->setCellValue("G{$totalRow}", "{$totalSiswa} Siswa");
         $sheet->mergeCells("G{$totalRow}:J{$totalRow}");
@@ -246,21 +249,21 @@ class PaymentExportService
 
         // AUTO-SIZE SEMUA KOLOM
         for ($col = 1; $col <= count($headers); $col++) {
-            $colLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+            $colLetter = Coordinate::stringFromColumnIndex($col);
             $sheet->getColumnDimension($colLetter)->setAutoSize(true);
         }
 
         // FREEZE PANE AGAR HEADER TETAP TERLIHAT SAAT SCROLL
         $sheet->freezePane('C8');
 
-        $fileName = 'Rekap_Administrasi_Pembayaran_SPMB_KNBI_' . date('Ymd_His') . '.xlsx';
+        $fileName = 'Rekap_Administrasi_Pembayaran_SPMB_KNBI_'.date('Ymd_His').'.xlsx';
 
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
         }, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+            'Content-Disposition' => 'attachment; filename="'.$fileName.'"',
             'Cache-Control' => 'max-age=0',
         ]);
     }

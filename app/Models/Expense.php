@@ -42,7 +42,25 @@ class Expense extends Model
     public static function generateExpenseCode(): string
     {
         $year = date('Y');
-        $count = static::whereYear('created_at', $year)->count() + 1;
-        return 'KLR-' . $year . '-' . str_pad((string)$count, 4, '0', STR_PAD_LEFT);
+        $prefix = 'KLR-'.$year.'-';
+
+        $maxSequence = static::query()
+            ->where('expense_code', 'like', $prefix.'%')
+            ->pluck('expense_code')
+            ->map(function (string $code) use ($prefix): int {
+                $suffix = substr($code, strlen($prefix));
+
+                return is_numeric($suffix) ? (int) $suffix : 0;
+            })
+            ->max() ?? 0;
+
+        $next = max($maxSequence, (int) static::max('id')) + 1;
+
+        do {
+            $candidate = $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            $next++;
+        } while (static::where('expense_code', $candidate)->exists());
+
+        return $candidate;
     }
 }

@@ -102,9 +102,9 @@
             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 py-1.5 border-b border-slate-100">
                 <div class="sm:col-span-3 font-bold text-slate-600 uppercase">Telah Terima Dari</div>
                 <div class="sm:col-span-9 font-bold text-slate-900 uppercase text-sm flex items-center gap-2">
-                    <span>{{ $registration->user->name ?? '-' }}</span>
+                    <span>{{ $registration?->user?->name ?? '-' }}</span>
                     <span class="text-xs font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        No. Pendaftar: {{ $registration->registration_number }}
+                        No. Pendaftar: {{ $registration?->registration_number ?? '-' }}
                     </span>
                 </div>
             </div>
@@ -112,8 +112,8 @@
             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 py-1.5 border-b border-slate-100">
                 <div class="sm:col-span-3 font-bold text-slate-600 uppercase">Pilihan Jurusan</div>
                 <div class="sm:col-span-9 font-bold text-slate-800">
-                    {{ $registration->major->name ?? '-' }}
-                    @if(!empty($registration->major->industry_class))
+                    {{ $registration?->major?->name ?? '-' }}
+                    @if(!empty($registration?->major?->industry_class))
                         <span class="text-teal-700">({{ $registration->major->industry_class }})</span>
                     @endif
                 </div>
@@ -122,7 +122,7 @@
             <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 py-1.5 border-b border-slate-100">
                 <div class="sm:col-span-3 font-bold text-slate-600 uppercase">Asal Sekolah</div>
                 <div class="sm:col-span-9 text-slate-800">
-                    {{ $registration->school->asal_sekolah ?? '-' }}
+                    {{ $registration?->school?->asal_sekolah ?? '-' }}
                 </div>
             </div>
 

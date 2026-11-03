@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AcademicYear;
 use App\Models\Major;
 use App\Models\Payment;
 use App\Models\Registration;
@@ -112,5 +111,83 @@ class PaymentAdministrationFeatureTest extends TestCase
 
         // Memastikan kontak dan nama SMP tidak ada di dalam kolom calon siswa tabel pembayaran
         $response->assertDontSee('Calon Siswa & Kontak');
+    }
+
+    public function test_input_pembayaran_siswa_tetap_berhasil_setelah_ada_data_pembayaran_atau_siswa_yang_dihapus_serta_mendukung_format_rupiah()
+    {
+        $admin = User::where('role', 'admin')->first();
+        $panitia = User::where('role', 'panitia')->first();
+
+        $registrations = Registration::with('user')->take(3)->get();
+        $this->assertGreaterThanOrEqual(2, $registrations->count());
+
+        $reg1 = $registrations[0];
+        $reg2 = $registrations[1];
+
+        // Buat 2 transaksi awal lalu hapus transaksi pertama sehingga jumlah baris (count) berkurang
+        $pay1 = Payment::create([
+            'registration_id' => $reg1->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran Administrasi SPMB',
+            'amount' => 100000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+            'confirmed_at' => now(),
+        ]);
+
+        $pay2 = Payment::create([
+            'registration_id' => $reg2->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Pembayaran Administrasi SPMB',
+            'amount' => 150000,
+            'payment_date' => now()->toDateString(),
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $admin->id,
+            'confirmed_at' => now(),
+        ]);
+
+        // Hapus transaksi pertama untuk mensimulasikan kondisi gap urutan nomor invoice
+        $pay1->delete();
+
+        // Submit pembayaran baru dari Admin dengan nominal berformat titik ribuan ("250.000") dan payment_type panjang
+        $resAdmin = $this->actingAs($admin)->post(route('admin.administrasi.payment.store'), [
+            'registration_id' => $reg1->id,
+            'amount' => '250.000',
+            'payment_date' => now()->toDateString(),
+            'payment_type' => 'Pembayaran Administrasi Pendaftaran dan Seragam Sekolah Lengkap Tahun Ajaran Baru',
+            'notes' => 'Pembayaran tunai setelah penghapusan data',
+        ]);
+
+        $resAdmin->assertRedirect(route('admin.dashboard', ['view' => 'administrasi']));
+        $resAdmin->assertSessionHas('success');
+        $resAdmin->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('pembayaran', [
+            'registration_id' => $reg1->id,
+            'amount' => 250000,
+            'status' => 'confirmed',
+        ]);
+
+        // Submit pembayaran dari Panitia menggunakan pencarian nama/no pendaftar (student_search fallback) dan format "Rp 1.000.000"
+        $resPanitia = $this->actingAs($panitia)->post(route('panitia.administrasi.payment.store'), [
+            'student_search' => $reg2->registration_number,
+            'amount' => 'Rp 1.000.000',
+            'payment_date' => now()->toDateString(),
+            'payment_type' => 'Pelunasan Administrasi SPMB',
+            'notes' => 'Diterima oleh panitia',
+        ]);
+
+        $resPanitia->assertRedirect(route('panitia.dashboard', ['view' => 'administrasi']));
+        $resPanitia->assertSessionHas('success');
+        $resPanitia->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('pembayaran', [
+            'registration_id' => $reg2->id,
+            'amount' => 1000000,
+            'confirmed_by' => $panitia->id,
+        ]);
     }
 }

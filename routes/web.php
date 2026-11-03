@@ -121,6 +121,9 @@ Route::middleware(['auth', 'role:panitia'])->prefix('panitia')->name('panitia.')
     Route::post('/spmb/calon-siswa/{id}/update', [AdminDashboardController::class, 'updateStudentManual'])->name('spmb.student.update');
     Route::post('/spmb/calon-siswa/{id}/delete', [AdminDashboardController::class, 'deleteStudentManual'])->name('spmb.student.delete');
     Route::post('/spmb/calon-siswa/bulk-delete', [AdminDashboardController::class, 'bulkDeleteStudents'])->name('spmb.student.bulkDelete');
+    Route::post('/administrasi/pembayaran/store', [AdminDashboardController::class, 'storePayment'])->name('administrasi.payment.store');
+    Route::get('/administrasi/pembayaran/{id}/kwitansi', [AdminDashboardController::class, 'printPaymentReceipt'])->name('administrasi.payment.receipt');
+    Route::get('/administrasi/pembayaran/rekap/{registrationId}', [AdminDashboardController::class, 'printGlobalReceipt'])->name('administrasi.payment.globalReceipt');
     Route::get('/administrasi/pembayaran/export-excel', [AdminDashboardController::class, 'exportPaymentsExcel'])->name('administrasi.payment.exportExcel');
     Route::post('/administrasi/pembayaran/{registrationId}/change-major', [AdminDashboardController::class, 'updateStudentMajor'])->name('administrasi.payment.updateMajor');
 });

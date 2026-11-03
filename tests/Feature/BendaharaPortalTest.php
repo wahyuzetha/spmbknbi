@@ -383,4 +383,50 @@ class BendaharaPortalTest extends TestCase
         $this->assertDatabaseMissing('siswa', ['id' => $siswaA->id]);
         $this->assertDatabaseMissing('siswa', ['id' => $siswaB->id]);
     }
+
+    public function test_bendahara_can_input_payment_with_formatted_rupiah_and_after_deleted_invoices()
+    {
+        $p1 = Payment::create([
+            'registration_id' => $this->registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Cicilan 1',
+            'amount' => 100000,
+            'payment_date' => '2026-10-18',
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $this->bendahara->id,
+        ]);
+
+        $p2 = Payment::create([
+            'registration_id' => $this->registration->id,
+            'invoice_number' => Payment::generateInvoiceNumber(),
+            'payment_type' => 'Cicilan 2',
+            'amount' => 150000,
+            'payment_date' => '2026-10-19',
+            'payment_method' => 'tunai',
+            'status' => 'confirmed',
+            'confirmed_by' => $this->bendahara->id,
+        ]);
+
+        // Delete first payment so count() is now 1 whileINV-YYYY-00002 already exists
+        $p1->delete();
+
+        $response = $this->actingAs($this->bendahara)->post(route('bendahara.administrasi.payment.store'), [
+            'registration_id' => $this->registration->id,
+            'amount' => '350.000',
+            'payment_date' => '2026-10-20',
+            'payment_type' => 'Pelunasan Daftar Ulang dan Seragam Praktek Siswa Baru SMK KNBI',
+            'notes' => 'Input dengan format titik ribuan',
+        ]);
+
+        $response->assertRedirect(route('bendahara.dashboard', ['view' => 'administrasi']));
+        $response->assertSessionHas('success');
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('pembayaran', [
+            'registration_id' => $this->registration->id,
+            'amount' => 350000,
+            'notes' => 'Input dengan format titik ribuan',
+        ]);
+    }
 }
